@@ -520,7 +520,7 @@ if(HAVE_FPGA)
 endif()
 if (USE_DAMARIS_LIB)
     target_link_libraries(opmsimulators PUBLIC ${Damaris_LIBRARIES})
-    target_compile_definitions(opmsimulators PRIVATE OPM_HAVE_DAMARIS=1)
+    target_compile_definitions(opmsimulators PUBLIC OPM_HAVE_DAMARIS=1)
 endif()
 
 if (USE_DAMARIS_LIB)

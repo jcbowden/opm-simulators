@@ -260,10 +260,9 @@ public:
             const int n_elements_local = n_elements_local_vector ;
             
 
-            //std::cout << "INFO: n_elements_local_grid   = " << n_elements_local_grid << std::endl ;
-            //std::cout << "INFO: n_elements_local_vector = " << n_elements_local_vector << std::endl ;
+            std::cout << "INFO: n_elements_local_grid   = " << n_elements_local_grid << std::endl ;
+            std::cout << "INFO: n_elements_local_vector = " << n_elements_local_vector << std::endl ;
             
-
             // This gets the n_elements_local from all ranks and copies them to a vector of all the values on all ranks (elements_rank_sizes[]).
             // MPI_Allgather(&n_elements_local, 1, MPI_UNSIGNED_LONG, elements_rank_sizes, 1, MPI_UNSIGNED_LONG, w->damaris_mpi_comm);
             simulator_.vanguard().grid().comm().allgather(n_elements_local, 1, elements_rank_sizes);
@@ -273,28 +272,33 @@ public:
                 elements_rank_offsets[t1] = elements_rank_offsets[t1-1] + elements_rank_sizes[t1-1];
             }
             
-
-            // Set the paramater so that the Damaris servers can allocate the correct amount of memory for the variabe
-            // Damaris parameters only support int data types. This will limit models to be under size of 2^32-1 elements
-            int temp_int = std::static_cast<int>)(elements_rank_sizes[rank]) ;
-            damaris_err = damaris_parameter_set("n_elements_local",&temp_int, sizeof(int));
-            if (damaris_err != DAMARIS_OK ) {
-                 std::err << "ERROR: Damaris library produced an error result for damaris_parameter_set(n_elements_local,&temp_int, sizeof(int));" << std::endl ;
+            if (rank == 0 ) {
+               int n_elements_global_max  = elements_rank_offsets[nranks-1] + n_elements_local ;
+                std::cout << "INFO: n_elements_global_max = " << n_elements_global_max << std::endl ;
             }
             
-            int temp_int = std::static_cast<int>)(n_elements_local_grid) ;
+            
+            // Set the paramater so that the Damaris servers can allocate the correct amount of memory for the variabe
+            // Damaris parameters only support int data types. This will limit models to be under size of 2^32-1 elements
+            int temp_int = static_cast<int>(elements_rank_sizes[rank]) ;
+            damaris_err = damaris_parameter_set("n_elements_local",&temp_int, sizeof(int));
+            if (damaris_err != DAMARIS_OK ) {
+                 std::cerr << "ERROR: Damaris library produced an error result for damaris_parameter_set(n_elements_local,&temp_int, sizeof(int));" << std::endl ;
+            }
+            
+            temp_int = static_cast<int>(n_elements_local_grid) ;
             damaris_err = damaris_parameter_set("n_elements_total",&temp_int, sizeof(int));
             if (damaris_err != DAMARIS_OK ) {
-                 std::err << "ERROR: Damaris library produced an error result for damaris_parameter_set(n_elements_local,&temp_int, sizeof(int));" << std::endl ;
+                 std::cerr << "ERROR: Damaris library produced an error result for damaris_parameter_set(n_elements_local,&temp_int, sizeof(int));" << std::endl ;
             }
             
             // Use damaris_set_position to set the offset in the global size of the array.
             // This is used so that output functionality (e.g. HDF5Store) knows global offsets of the data of the ranks
             int64_t temp_int64_t[1] ;
-            temp_int64_t[0] = std::static_cast<int64_t>)(elements_rank_offsets[rank]) ;
+            temp_int64_t[0] = static_cast<int64_t>(elements_rank_offsets[rank]) ;
             damaris_err = damaris_set_position("PRESSURE",temp_int64_t) ;
             if (damaris_err != DAMARIS_OK ) {
-                 std::err << "ERROR: Damaris library produced an error result for damaris_set_position("PRESSURE",temp_int64_t);" << std::endl ;
+                 std::cerr << "ERROR: Damaris library produced an error result for damaris_set_position(\"PRESSURE\",temp_int64_t);" << std::endl ;
             }  
             this->damarisUpdate = false ;
         }
