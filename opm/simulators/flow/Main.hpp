@@ -234,8 +234,10 @@ public:
               int err = damaris_initialize("/home/jbowden/config.xml" , EclGenericVanguard::comm()) ;
               damaris_start(&is_client) ;
               isSimulationRank_ = (is_client > 0) ;
-              damaris_client_comm_get (&new_comm) ;
-              EclGenericVanguard::setCommunication(std::make_unique<EclGenericVanguard::Communication>(new_comm));
+              if (isSimulationRank_) {
+                  damaris_client_comm_get (&new_comm) ;
+                  EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>(new_comm));
+              }
 #endif // HAVE_MPI
 #endif
 
