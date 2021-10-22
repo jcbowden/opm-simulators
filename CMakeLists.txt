@@ -26,6 +26,7 @@ option(BUILD_FLOW_POLY_GRID "Build flow blackoil with polyhedral grid" OFF)
 option(OPM_ENABLE_PYTHON "Enable python bindings?" OFF)
 option(OPM_ENABLE_PYTHON_TESTS "Enable tests for the python bindings?" ON)
 option(ENABLE_FPGA "Enable FPGA kernels integration?" OFF)
+option(USE_DAMARIS_LIB "Use the Damaris library for asynchronous I/O?" OFF)
 
 option(USE_CHOW_PATEL_ILU "Use the iterative ILU by Chow and Patel?" OFF)
 option(USE_CHOW_PATEL_ILU_GPU "Run iterative ILU decomposition on GPU? Requires USE_CHOW_PATEL_ILU" OFF)
@@ -523,10 +524,7 @@ if (USE_DAMARIS_LIB)
     target_compile_definitions(opmsimulators PUBLIC OPM_HAVE_DAMARIS=1)
 endif()
 
-if (USE_DAMARIS_LIB)
-    target_link_libraries(opmsimulators PUBLIC ${Damaris_LIBRARIES})
-    target_compile_definitions(opmsimulators PUBLIC OPM_HAVE_DAMARIS=1)
-endif()
-
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
   FILES_MATCHING PATTERN "*.1")
+
+
