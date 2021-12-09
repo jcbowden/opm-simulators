@@ -261,8 +261,8 @@ public:
             
 
             std::cout << "INFO: n_elements_local_grid   = " << n_elements_local_grid << std::endl ;
-            std::cout << "INFO: n_elements_local_vector = " << n_elements_local_vector << std::endl ;         
-
+            std::cout << "INFO: n_elements_local_vector = " << n_elements_local_vector << std::endl ;
+            
             // This gets the n_elements_local from all ranks and copies them to a vector of all the values on all ranks (elements_rank_sizes[]).
             // MPI_Allgather(&n_elements_local, 1, MPI_UNSIGNED_LONG, elements_rank_sizes, 1, MPI_UNSIGNED_LONG, w->damaris_mpi_comm);
             simulator_.vanguard().grid().comm().allgather(n_elements_local, 1, elements_rank_sizes);

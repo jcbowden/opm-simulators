@@ -225,7 +225,6 @@ public:
 #endif // HAVE_MPI
 #endif
 
-
 #if  OPM_HAVE_DAMARIS
 #if HAVE_MPI
               int is_client ;
