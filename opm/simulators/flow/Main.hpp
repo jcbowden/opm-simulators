@@ -226,6 +226,24 @@ public:
 #endif
 
 
+
+
+#if  OPM_HAVE_DAMARIS
+#if HAVE_MPI
+              int is_client ;
+              MPI_Comm new_comm;
+              std::cout << "INFO: initializing Damaris using file: /home/jbowden/config.xml" << std::endl;
+              int err = damaris_initialize("/home/jbowden/config.xml" , EclGenericVanguard::comm()) ;
+              damaris_start(&is_client) ;
+              isSimulationRank_ = (is_client > 0) ;
+              if (isSimulationRank_) {
+                  damaris_client_comm_get (&new_comm) ;
+                  EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>(new_comm));
+              }
+#endif // HAVE_MPI
+#endif
+
+
 #if DEMONSTRATE_RUN_WITH_NONWORLD_COMM
 #if HAVE_MPI
 #if !OPM_HAVE_DAMARIS

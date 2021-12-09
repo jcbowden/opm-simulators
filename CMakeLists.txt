@@ -517,6 +517,10 @@ if(HAVE_FPGA)
   ExternalProject_Get_Property(FPGA_library binary_dir)
   target_link_libraries(opmsimulators PUBLIC ${binary_dir}/fpga_lib_alveo_u280.a)
 endif()
+if (USE_DAMARIS_LIB)
+    target_link_libraries(opmsimulators PUBLIC ${Damaris_LIBRARIES})
+    target_compile_definitions(opmsimulators PUBLIC OPM_HAVE_DAMARIS=1)
+endif()
 
 if (USE_DAMARIS_LIB)
     target_link_libraries(opmsimulators PUBLIC ${Damaris_LIBRARIES})
@@ -525,6 +529,7 @@ endif()
 
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
   FILES_MATCHING PATTERN "*.1")
+
 
 
 
