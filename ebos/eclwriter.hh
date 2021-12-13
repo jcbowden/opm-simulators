@@ -38,7 +38,7 @@
 
 #include <ebos/eclgenericwriter.hh>
 
-#if OPM_HAVE_DAMARIS
+#if HAVE_DAMARIS
 #include <Damaris.h>
 #endif
 
@@ -136,7 +136,7 @@ public:
                    EWOMS_GET_PARAM(TypeTag, bool, EnableAsyncEclOutput), EWOMS_GET_PARAM(TypeTag, bool, EnableEsmry))
         , simulator_(simulator)
     {
-#if OPM_HAVE_DAMARIS      
+#ifdef HAVE_DAMARIS      
         this->damarisUpdate = true ; 
 #endif         
         this->eclOutputModule_ = std::make_unique<EclOutputBlackOilModule<TypeTag>>(simulator, this->wbp_index_list_, this->collectToIORank_);
@@ -238,7 +238,7 @@ public:
 
     void writeOutput(bool isSubStep)
     {
-#if OPM_HAVE_DAMARIS      
+#ifdef HAVE_DAMARIS      
         using DataEntry = std::tuple<std::string,
                                  UnitSystem::measure,
                                  data::TargetType,
@@ -256,8 +256,9 @@ public:
             
             const auto& gridView = simulator_.vanguard().gridView();
             const int n_elements_local_grid = gridView.size(/*codim=*/0);  // I think this might be the full model size?
-            const int n_elements_local_vector = this->collectToIORank_.getPRESSURE_size() ;
-            const int n_elements_local = n_elements_local_vector ;
+            // const int n_elements_local_vector = this->collectToIORank_.getPRESSURE_size() ;
+            const int n_elements_local_vector = this->eclOutputModule_.getPRESSURE_size() ;
+            int n_elements_local = n_elements_local_vector ;
             
 
             std::cout << "INFO: n_elements_local_grid   = " << n_elements_local_grid << std::endl ;
@@ -306,9 +307,10 @@ public:
         
         // this->collectToIORank_.getPRESSURE_ptr() ;
         
-        damaris_write("PRESSURE", (void *) this->collectToIORank_.getPRESSURE_ptr() ) ;
- 
-#else          
+        // damaris_write("PRESSURE", (void *) this->collectToIORank_.getPRESSURE_ptr() ) ;  // eclOutputModule_
+         damaris_write("PRESSURE", (void *) this->eclOutputModule_.getPRESSURE_ptr() ) ; 
+#else         
+        // thiswill->not->compile_ ;    
         const int reportStepNum = simulator_.episodeIndex() + 1;
 
         this->prepareLocalCellData(isSubStep, reportStepNum);
@@ -495,7 +497,7 @@ private:
     Simulator& simulator_;
     std::unique_ptr<EclOutputBlackOilModule<TypeTag>> eclOutputModule_;
     Scalar restartTimeStepSize_;
-#if OPM_HAVE_DAMARIS
+#ifdef HAVE_DAMARIS
     bool damarisUpdate ;  ///< Whenever this is true writeOutput() will set up Damris offsets of model fields
 #endif
 };

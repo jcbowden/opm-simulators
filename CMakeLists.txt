@@ -60,33 +60,6 @@ endif()
 
 find_package(opm-common REQUIRED)
 
-if (USE_DAMARIS_LIB)
-  find_package(Damaris 1.5 )
-  if (Damaris_FOUND)
-    message(STATUS "The Damaris library was found: ${Damaris_VERSION}")
-    if (Damaris_HAS_HDF5)
-      message(STATUS "The Damaris library has HDF5 support: ${HDF5_VERSION}")
-    else()
-      message(STATUS "The Damaris library does NOT have HDF5 support")
-    endif()
-    if (Damaris_HAS_VISIT)
-      message(STATUS "The Damaris library has VisIt support: ${VisIt_VERSION}")
-    else()
-      message(STATUS "The Damaris library does NOT have VisIt support")
-    endif()
-    if (Damaris_HAS_CATALYST)
-      message(STATUS "The Damaris library has Catalyst support: ${Catalyst_VERSION}  ${Paraview_VERSION}")
-    else()
-      message(STATUS "The Damaris library does NOT have Catalyst support")
-    endif()
-    include_directories(${Damaris_INCLUDE_DIRS})
-
-  else()
-    message(STATUS "The Damaris library was NOT found")
-  endif()
-endif()
-
-
 include(OpmInit)
 OpmSetPolicies()
 
@@ -107,6 +80,13 @@ include(Findopm-tests)
 # separate file (in cmake/Modules sub-directory) because it is shared
 # with the find module
 include ("${project}-prereqs")
+
+# Only add the HAVE_DAMARIS define to config.h if the build requested Damaris support
+if (USE_DAMARIS_LIB)  
+   if (Damaris_FOUND)
+       set (opm-simulators_CONFIG_VAR  ${opm-simulators_CONFIG_VAR} HAVE_DAMARIS)
+   endif()   
+endif()   
 
 # Make sure we are using the same compiler underneath
 # NVCC as for the rest. In the case that NVCC does not support
@@ -326,7 +306,8 @@ endmacro (files_hook)
 
 macro (tests_hook)
 endmacro (tests_hook)
-
+ 
+    
 # all setup common to the OPM library modules is done here
 include (OpmLibMain)
 
@@ -517,9 +498,35 @@ if(HAVE_FPGA)
   ExternalProject_Get_Property(FPGA_library binary_dir)
   target_link_libraries(opmsimulators PUBLIC ${binary_dir}/fpga_lib_alveo_u280.a)
 endif()
-if (USE_DAMARIS_LIB)
-    target_link_libraries(opmsimulators PUBLIC ${Damaris_LIBRARIES})
-    target_compile_definitions(opmsimulators PUBLIC OPM_HAVE_DAMARIS=1)
+if (USE_DAMARIS_LIB) # User requested Damaris support
+        if (Damaris_FOUND)
+             message(STATUS "The Damaris library was found: ${Damaris_VERSION} ${Damaris_DIR}")
+            if (Damaris_HAS_HDF5)
+              message(STATUS "The Damaris library has HDF5 support: ${HDF5_VERSION}")
+            else()
+              message(STATUS "The Damaris library does NOT have HDF5 support")
+            endif()
+            if (Damaris_HAS_VISIT)
+              message(STATUS "The Damaris library has VisIt support: ${VisIt_VERSION}")
+            else()
+              message(STATUS "The Damaris library does NOT have VisIt support")
+            endif()
+            if (Damaris_HAS_CATALYST)
+              message(STATUS "The Damaris library has Catalyst support: ${Catalyst_VERSION}  ${Paraview_VERSION}")
+            else()
+              message(STATUS "The Damaris library does NOT have Catalyst support")
+            endif()
+            include_directories(${Damaris_INCLUDE_DIRS})
+            target_link_libraries(opmsimulators PUBLIC ${Damaris_LIBRARIES})
+         else()
+             message(STATUS "The Damaris library was requested but NOT found")
+         endif()
+else()  # User did not request Damaris support
+   if (Damaris_FOUND)
+       message(STATUS "The Damaris library was NOT requested but was found: ${Damaris_VERSION} ${Damaris_DIR}")
+   else()
+       message(STATUS "The Damaris library was NOT requested and was NOT found")
+   endif()
 endif()
 
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}

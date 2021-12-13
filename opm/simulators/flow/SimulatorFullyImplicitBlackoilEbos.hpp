@@ -280,7 +280,7 @@ public:
 
         solver->model().endReportStep();
         
-#if OPM_HAVE_DAMARIS       
+#ifdef OPM_HAVE_DAMARIS       
         damaris_end_iteration( ) ;
 #endif     
 

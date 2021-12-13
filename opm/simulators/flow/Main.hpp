@@ -66,7 +66,7 @@
 #include <opm/simulators/utils/ParallelEclipseState.hpp>
 #endif
 
-#if OPM_HAVE_DAMARIS
+#if HAVE_DAMARIS
 #include <Damaris.h>
 #endif
 
@@ -210,7 +210,7 @@ public:
 #endif
         EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>());
 
-#if  OPM_HAVE_DAMARIS
+#if  HAVE_DAMARIS
 #if HAVE_MPI
               int is_client ;
               MPI_Comm new_comm;
@@ -228,7 +228,7 @@ public:
 
 #if DEMONSTRATE_RUN_WITH_NONWORLD_COMM
 #if HAVE_MPI
-#if !OPM_HAVE_DAMARIS
+#if !HAVE_DAMARIS
             if (EclGenericVanguard::comm().size() > 1) {
                 int world_rank = EclGenericVanguard::comm().rank();
                 int color = (world_rank == 0);
