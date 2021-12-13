@@ -258,7 +258,7 @@ public:
             const int n_elements_local_grid = gridView.size(/*codim=*/0);  // I think this might be the full model size?
             // const int n_elements_local_vector = this->collectToIORank_.getPRESSURE_size() ;
             const int n_elements_local_vector = this->eclOutputModule_.getPRESSURE_size() ;
-            int n_elements_local = n_elements_local_vector ;
+            const unsigned long long n_elements_local = n_elements_local_vector ;
             
 
             std::cout << "INFO: n_elements_local_grid   = " << n_elements_local_grid << std::endl ;
@@ -266,7 +266,7 @@ public:
             
             // This gets the n_elements_local from all ranks and copies them to a vector of all the values on all ranks (elements_rank_sizes[]).
             // MPI_Allgather(&n_elements_local, 1, MPI_UNSIGNED_LONG, elements_rank_sizes, 1, MPI_UNSIGNED_LONG, w->damaris_mpi_comm);
-            simulator_.vanguard().grid().comm().allgather(n_elements_local, 1, elements_rank_sizes);
+            simulator_.vanguard().grid().comm().allgather(&n_elements_local, 1, elements_rank_sizes.data());
             elements_rank_offsets[0] = 0ULL ;  // 
             for (int t1 = 1 ; t1 < nranks; t1++)
             {
