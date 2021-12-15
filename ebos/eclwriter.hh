@@ -248,6 +248,9 @@ public:
         {
             int damaris_err = DAMARIS_OK;
             
+            const int reportStepNum = simulator_.episodeIndex() + 1;
+            this->prepareLocalCellData(isSubStep, reportStepNum);
+            
             const int nranks = simulator_.vanguard().grid().comm().size() ;
             const int rank   = simulator_.vanguard().grid().comm().rank() ;
           
