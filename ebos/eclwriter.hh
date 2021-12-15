@@ -257,7 +257,7 @@ public:
             const auto& gridView = simulator_.vanguard().gridView();
             const int n_elements_local_grid = gridView.size(/*codim=*/0);  // I think this might be the full model size?
             // const int n_elements_local_vector = this->collectToIORank_.getPRESSURE_size() ;
-            const int n_elements_local_vector = this->eclOutputModule_.getPRESSURE_size() ;
+            const int n_elements_local_vector = this->eclOutputModule_->getPRESSURE_size() ;
             const unsigned long long n_elements_local = n_elements_local_vector ;
             
 
@@ -308,7 +308,7 @@ public:
         // this->collectToIORank_.getPRESSURE_ptr() ;
         
         // damaris_write("PRESSURE", (void *) this->collectToIORank_.getPRESSURE_ptr() ) ;  // eclOutputModule_
-         damaris_write("PRESSURE", (void *) this->eclOutputModule_.getPRESSURE_ptr() ) ; 
+         damaris_write("PRESSURE", (void *) this->eclOutputModule_->getPRESSURE_ptr() ) ; 
 #else         
         // thiswill->not->compile_ ;    
         const int reportStepNum = simulator_.episodeIndex() + 1;
