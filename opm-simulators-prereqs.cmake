@@ -16,7 +16,7 @@ set (opm-simulators_CONFIG_VAR
   DUNE_ISTL_VERSION_MAJOR
   DUNE_ISTL_VERSION_MINOR
   DUNE_ISTL_VERSION_REVISION
-  HAVE_SUITESPARSE_UMFPACK
+  HAVE_SUITESPARSE_UMFPACK  
   )
 
 # dependencies
@@ -43,6 +43,7 @@ set (opm-simulators_DEPS
   "opm-material REQUIRED"
   "opm-grid REQUIRED"
   "opm-models REQUIRED"
+  "Damaris 1.5"
   )
 
 find_package_deps(opm-simulators)
