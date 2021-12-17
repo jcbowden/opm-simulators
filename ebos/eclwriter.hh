@@ -258,27 +258,30 @@ public:
             std::vector<unsigned long long> elements_rank_offsets(nranks);  // one for each rank, first one 0 // to be computed - Probably could use MPI_Scan()?
             
             const auto& gridView = simulator_.vanguard().gridView();
-            const int n_elements_local_grid = gridView.size(/*codim=*/0);  // I think this might be the full model size?
-            // const int n_elements_local_vector = this->collectToIORank_.getPRESSURE_size() ;
-            const int n_elements_local_vector = this->eclOutputModule_->getPRESSURE_size() ;
-            const unsigned long long n_elements_local = n_elements_local_vector ;
-            
+            const int n_elements_local_grid = gridView.size(/*codim=*/0);  // I think this might be the full model size? No, it is the local ranks model size
+            const unsigned long long n_elements_local = n_elements_local_grid ;
+            // const int n_elements_local_vector = this->eclOutputModule_->getPRESSURE_size() ;
+            // const unsigned long long n_elements_local = n_elements_local_vector ;
 
-            std::cout << "INFO: n_elements_local_grid   = " << n_elements_local_grid << std::endl ;
-            std::cout << "INFO: n_elements_local_vector = " << n_elements_local_vector << std::endl ;
+            std::cout << "INFO (" << rank << "): n_elements_local_grid   = " << n_elements_local_grid << std::endl ;
             
-            // This gets the n_elements_local from all ranks and copies them to a vector of all the values on all ranks (elements_rank_sizes[]).
+            // This gets the n_elements_local from all ranks and copies them to a std::vector of all the values on all ranks (elements_rank_sizes[]).
             // MPI_Allgather(&n_elements_local, 1, MPI_UNSIGNED_LONG, elements_rank_sizes, 1, MPI_UNSIGNED_LONG, w->damaris_mpi_comm);
             simulator_.vanguard().grid().comm().allgather(&n_elements_local, 1, elements_rank_sizes.data());
-            elements_rank_offsets[0] = 0ULL ;  // 
-            for (int t1 = 1 ; t1 < nranks; t1++)
-            {
+            elements_rank_offsets[0] = 0ULL ;  //
+    
+            // This scan makes the offsets to the start of each ranks grid section if each local grid data was concatenated (in rank order)
+            for (int t1 = 1 ; t1 < nranks; t1++) {
                 elements_rank_offsets[t1] = elements_rank_offsets[t1-1] + elements_rank_sizes[t1-1];
+            }
+            int n_elements_global_max  = 0 ; 
+            for (int t1 = 0 ; t1 < nranks; t1++) {
+               n_elements_global_max += elements_rank_sizes[t1] ;
             }
             
             if (rank == 0 ) {
-               int n_elements_global_max  = elements_rank_offsets[nranks-1] + n_elements_local ;
-                std::cout << "INFO: n_elements_global_max = " << n_elements_global_max << std::endl ;
+               // int n_elements_global_max  = elements_rank_offsets[nranks-1] + n_elements_local ;
+                std::cout << "INFO (" << rank << "): n_elements_global_max = " << n_elements_global_max << std::endl ;
             }
             
             
@@ -307,10 +310,6 @@ public:
             this->damarisUpdate = false ;
         }
         // now to find the field data
-        
-        // this->collectToIORank_.getPRESSURE_ptr() ;
-        
-        // damaris_write("PRESSURE", (void *) this->collectToIORank_.getPRESSURE_ptr() ) ;  // eclOutputModule_
          damaris_write("PRESSURE", (void *) this->eclOutputModule_->getPRESSURE_ptr() ) ; 
 #else         
         // thiswill->not->compile_ ;    
