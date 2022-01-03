@@ -315,8 +315,14 @@ public:
             }  
             this->damarisUpdate = false ;
         }
-        // now to find the field data
-         damaris_write("PRESSURE", (void *) this->eclOutputModule_->getPRESSURE_ptr() ) ; 
+        
+        // const int reportStepNum = simulator_.episodeIndex() + 1;
+        if (! isSubStep) {
+            data::Solution localCellData = {};
+            this->eclOutputModule_->assignToSolution(localCellData);
+            // now to find the field data
+            damaris_write("PRESSURE", (void *) this->eclOutputModule_->getPRESSURE_ptr() ) ; 
+        }
 #else         
         // thiswill->not->compile_ ;    
         const int reportStepNum = simulator_.episodeIndex() + 1;
