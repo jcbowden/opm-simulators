@@ -274,10 +274,13 @@ public:
             for (int t1 = 1 ; t1 < nranks; t1++) {
                 elements_rank_offsets[t1] = elements_rank_offsets[t1-1] + elements_rank_sizes[t1-1];
             }
-            int n_elements_global_max  = 0 ; 
-            for (int t1 = 0 ; t1 < nranks; t1++) {
-               n_elements_global_max += elements_rank_sizes[t1] ;
-            }
+            
+            // find the global/total size
+            unsigned long long n_elements_global_max  = elements_rank_offsets[nranks-1] ; 
+            n_elements_global_max += elements_rank_sizes[nranks-1] ; // add the last ranks size to the already accumulated offset values
+            //for (int t1 = 0 ; t1 < nranks; t1++) {
+            //   n_elements_global_max += elements_rank_sizes[t1] ;
+            //}
             
             if (rank == 0 ) {
                // int n_elements_global_max  = elements_rank_offsets[nranks-1] + n_elements_local ;
@@ -287,13 +290,16 @@ public:
             
             // Set the paramater so that the Damaris servers can allocate the correct amount of memory for the variabe
             // Damaris parameters only support int data types. This will limit models to be under size of 2^32-1 elements
+            // ToDo: Do we need to check that local ranks are 0 based ?
             int temp_int = static_cast<int>(elements_rank_sizes[rank]) ;
             damaris_err = damaris_parameter_set("n_elements_local",&temp_int, sizeof(int));
             if (damaris_err != DAMARIS_OK ) {
                  std::cerr << "ERROR: Damaris library produced an error result for damaris_parameter_set(n_elements_local,&temp_int, sizeof(int));" << std::endl ;
             }
             
-            temp_int = static_cast<int>(n_elements_local_grid) ;
+            // Damaris parameters only support int data types. This will limit models to be under size of 2^32-1 elements
+            // ToDo: Do we need to check that n_elements_global_max will fit in a C int type (INT_MAX)
+            temp_int = static_cast<int>(n_elements_global_max) ;
             damaris_err = damaris_parameter_set("n_elements_total",&temp_int, sizeof(int));
             if (damaris_err != DAMARIS_OK ) {
                  std::cerr << "ERROR: Damaris library produced an error result for damaris_parameter_set(n_elements_local,&temp_int, sizeof(int));" << std::endl ;
