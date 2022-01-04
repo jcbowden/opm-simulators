@@ -322,6 +322,7 @@ public:
             this->eclOutputModule_->assignToSolution(localCellData);
             // now to find the field data
             damaris_write("PRESSURE", (void *) this->eclOutputModule_->getPRESSURE_ptr() ) ; 
+            damaris_end_iteration( ) ;  // this was being called from: opm/simulators/flow/SimulatorFullyImplicitBlackoilEbos.hpp:284
         }
 #else         
         // thiswill->not->compile_ ;    

@@ -33,6 +33,10 @@
 
 #include <opm/common/ErrorMacros.hpp>
 
+#if HAVE_DAMARIS
+#include <Damaris.h>
+#endif
+
 namespace Opm::Properties {
 
 template<class TypeTag, class MyTypeTag>
@@ -280,8 +284,8 @@ public:
 
         solver->model().endReportStep();
         
-#ifdef OPM_HAVE_DAMARIS       
-        damaris_end_iteration( ) ;
+#ifdef HAVE_DAMARIS       
+       // damaris_end_iteration( ) ;  // This guard was the old guard, therfore not defined, ever.
 #endif     
 
         // take time that was used to solve system for this reportStep
