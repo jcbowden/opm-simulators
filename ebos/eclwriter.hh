@@ -238,6 +238,11 @@ public:
 
     void writeOutput(bool isSubStep)
     {
+        
+        const int reportStepNum = simulator_.episodeIndex() + 1;
+        this->prepareLocalCellData(isSubStep, reportStepNum);
+        this->eclOutputModule_->outputErrorLog(simulator_.gridView().comm());
+        
 #ifdef HAVE_DAMARIS      
         using DataEntry = std::tuple<std::string,
                                  UnitSystem::measure,
@@ -248,8 +253,9 @@ public:
         {
             int damaris_err = DAMARIS_OK;
             
-            const int reportStepNum = simulator_.episodeIndex() + 1;
-            this->prepareLocalCellData(isSubStep, reportStepNum);
+            //const int reportStepNum = simulator_.episodeIndex() + 1;
+            //this->prepareLocalCellData(isSubStep, reportStepNum);
+            //this->eclOutputModule_->outputErrorLog(simulator_.gridView().comm());
             
             const int nranks = simulator_.vanguard().grid().comm().size() ;
             const int rank   = simulator_.vanguard().grid().comm().rank() ;
@@ -324,12 +330,11 @@ public:
             damaris_write("PRESSURE", (void *) this->eclOutputModule_->getPRESSURE_ptr() ) ; 
             damaris_end_iteration( ) ;  // this was being called from: opm/simulators/flow/SimulatorFullyImplicitBlackoilEbos.hpp:284
         }
-#else         
-        // thiswill->not->compile_ ;    
-        const int reportStepNum = simulator_.episodeIndex() + 1;
+#else           
+        //const int reportStepNum = simulator_.episodeIndex() + 1;
 
-        this->prepareLocalCellData(isSubStep, reportStepNum);
-        this->eclOutputModule_->outputErrorLog(simulator_.gridView().comm());
+        //this->prepareLocalCellData(isSubStep, reportStepNum);
+        //this->eclOutputModule_->outputErrorLog(simulator_.gridView().comm());
 
         // output using eclWriter if enabled
         auto localWellData = simulator_.problem().wellModel().wellData();

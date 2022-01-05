@@ -284,8 +284,8 @@ public:
 
         solver->model().endReportStep();
         
-#ifdef HAVE_DAMARIS       
-       // damaris_end_iteration( ) ;  // This guard was the old guard, therfore not defined, ever.
+#ifdef HAVE_DAMARIS      
+        // damaris_end_iteration( ) ;  // This is currently called in the eclwriter.hh EclWriter::writeOutput() (3 lines above here)
 #endif     
 
         // take time that was used to solve system for this reportStep
