@@ -179,6 +179,13 @@ public:
 #endif // DEMONSTRATE_RUN_WITH_NONWORLD_COMM
 
         EclGenericVanguard::setCommunication(nullptr);
+        
+#if  HAVE_DAMARIS    
+        int err = damaris_finalize() ;
+        if (err != DAMARIS_OK ) {
+            std::cerr << "ERROR: Damaris library produced an error result for damaris_initialize()" << std::endl ;
+        }
+#endif
 
 #if HAVE_MPI && !HAVE_DUNE_FEM
         MPI_Finalize();
@@ -210,21 +217,23 @@ public:
 #endif
         EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>());
 
+/*
 #if  HAVE_DAMARIS
-#if HAVE_MPI
               int is_client ;
               MPI_Comm new_comm;
               std::cout << "INFO: initializing Damaris using file: /home/jbowden/config.xml" << std::endl;
               int err = damaris_initialize("/home/jbowden/config.xml" , EclGenericVanguard::comm()) ;
+              if (err != DAMARIS_OK ) {
+                    std::cerr << "ERROR: Damaris library produced an error result for damaris_initialize()" << std::endl ;
+              }
               damaris_start(&is_client) ;
               isSimulationRank_ = (is_client > 0) ;
               if (isSimulationRank_) {
                   damaris_client_comm_get (&new_comm) ;
                   EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>(new_comm));
               }
-#endif // HAVE_MPI
 #endif
-
+*/
 
 #if DEMONSTRATE_RUN_WITH_NONWORLD_COMM
 #if HAVE_MPI
@@ -455,6 +464,9 @@ private:
         if (outputCout_) {
             FlowMainEbos<PreTypeTag>::printBanner(EclGenericVanguard::comm());
         }
+        
+        
+        
         // Create Deck and EclipseState.
         try {
             auto python = std::make_shared<Python>();
@@ -490,8 +502,29 @@ private:
                      summaryConfig_, nullptr, python, std::move(parseContext),
                      init_from_restart_file, outputCout_, outputInterval);
 
+            
+#if  HAVE_DAMARIS
+              int is_client ;
+              MPI_Comm new_comm;
+              std::cout << "INFO: initializing Damaris using file: /home/jbowden/config.xml" << std::endl;
+              int err = damaris_initialize("/home/jbowden/config.xml" , EclGenericVanguard::comm()) ;
+              if (err != DAMARIS_OK ) {
+                    std::cerr << "ERROR: Damaris library produced an error result for damaris_initialize()" << std::endl ;
+              }
+              damaris_start(&is_client) ;
+              isSimulationRank_ = (is_client > 0) ;
+              if (isSimulationRank_) {
+                  damaris_client_comm_get (&new_comm) ;
+                  EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>(new_comm));
+              }
+#endif
+            
             setupTime_ = externalSetupTimer.elapsed();
             outputFiles_ = (outputMode != FileOutputMode::OUTPUT_NONE);
+            
+            
+            
+            
         }
         catch (const std::invalid_argument& e)
         {
