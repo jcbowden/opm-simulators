@@ -234,7 +234,7 @@ namespace {
 #endif
     }
 
-    void readOnIORank(Opm::Parallel::Communication         comm,
+    void readOnIORank(Opm::Parallel::Communication&         comm,
                       const std::string&                   deckFilename,
                       const Opm::ParseContext*             parseContext,
                       std::shared_ptr<Opm::Deck>&          deck,
@@ -264,9 +264,9 @@ namespace {
                                 *parseContext, errorGuard);
         }
 
-        if (eclipseState == nullptr) {
+        //if (eclipseState == nullptr) {
             eclipseState = createEclipseState(comm, *deck);
-        }
+        //}
 
         if (eclipseState->getInitConfig().restartRequested()) {
             loadObjectsFromRestart(*deck, parser, *parseContext,
@@ -298,7 +298,7 @@ namespace {
     }
 
 #if HAVE_MPI
-    void defineStateObjectsOnNonIORank(Opm::Parallel::Communication         comm,
+    void defineStateObjectsOnNonIORank(Opm::Parallel::Communication&         comm,
                                        std::shared_ptr<Opm::Python>         python,
                                        std::shared_ptr<Opm::EclipseState>&  eclipseState,
                                        std::shared_ptr<Opm::Schedule>&      schedule,
@@ -307,9 +307,9 @@ namespace {
                                        std::unique_ptr<Opm::WellTestState>& wtestState,
                                        std::shared_ptr<Opm::SummaryConfig>& summaryConfig)
     {
-        if (eclipseState == nullptr) {
+       // if (eclipseState == nullptr) {
             eclipseState = std::make_shared<Opm::ParallelEclipseState>(comm);
-        }
+       // }
 
         if (schedule == nullptr) {
             schedule = std::make_shared<Opm::Schedule>(std::move(python));
@@ -428,7 +428,7 @@ Opm::setupLogging(const int          mpi_rank_,
     return output;
 }
 
-void Opm::readDeck(Opm::Parallel::Communication    comm,
+void Opm::readDeck(Opm::Parallel::Communication&    comm,
                    const std::string&              deckFilename,
                    std::shared_ptr<Deck>&          deck,
                    std::shared_ptr<EclipseState>&  eclipseState,

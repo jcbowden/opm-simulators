@@ -68,6 +68,8 @@
 
 #if HAVE_DAMARIS
 #include <Damaris.h>
+#include <damaris/model/ModifyModel.hpp>
+#include <map>
 #endif
 
 #include <cassert>
@@ -217,7 +219,7 @@ public:
 #endif
         EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>());
 
-/*
+/* Damaris I/O initialization has been moved to after the readDeck() call in Main::initalize_()
 #if  HAVE_DAMARIS
               int is_client ;
               MPI_Comm new_comm;
@@ -501,24 +503,94 @@ private:
             readDeck(EclGenericVanguard::comm(), deckFilename, deck_, eclipseState_, schedule_, udqState_, actionState_, wtestState_,
                      summaryConfig_, nullptr, python, std::move(parseContext),
                      init_from_restart_file, outputCout_, outputInterval);
-
             
+                
 #if  HAVE_DAMARIS
-              int is_client ;
-              MPI_Comm new_comm;
-              std::cout << "INFO: initializing Damaris using file: /home/jbowden/config.xml" << std::endl;
-              int err = damaris_initialize("/home/jbowden/config.xml" , EclGenericVanguard::comm()) ;
-              if (err != DAMARIS_OK ) {
-                    std::cerr << "ERROR: Damaris library produced an error result for damaris_initialize()" << std::endl ;
-              }
-              damaris_start(&is_client) ;
-              isSimulationRank_ = (is_client > 0) ;
-              if (isSimulationRank_) {
-                  damaris_client_comm_get (&new_comm) ;
-                  EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>(new_comm));
-              }
-#endif
+           /* Using the ModifyModel class to set the XML file for Damaris */
+            std::string damaris_config_xml =  R"V0G0N(<?xml version="1.0"?>
+<simulation name="opm-flow" language="c" 
+	xmlns="http://damaris.gforge.inria.fr/damaris/model">
+	<architecture>
+		<domains count="1"/>
+		<dedicated cores="_DC_REGEX_" nodes="_DN_REGEX_"/>
+		<buffer name="buffer" size="_SHMEM_BUFFER_BYTES_REGEX_" />
+		<placement />
+		<queue  name="queue" size="100" />
+	</architecture>
+	<data>
+    
+     <parameter name="n_elements_total"     type="int" value="1" /> 
+     <parameter name="n_elements_local"     type="int" value="1" />
+     <parameter name="n"     type="int" value="1" />
+     
+     <layout   name="zonal_layout_usmesh"             type="double" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
+     <variable name="PRESSURE"    layout="zonal_layout_usmesh"     type="scalar"  visualizable="false"     unit="Pa"   centering="zonal"  store="_MYSTORE_OR_EMPTY_REGEX_" /> 
+     _MORE_VARIABLES_REGEX_
+	</data>
+    
+     <storage>
+      <store name="MyStore" type="HDF5">
+         <option key="FileMode">Collective</option>
+         <option key="XDMFMode">NoIteration</option>
+         <option key="FilesPath">_PATH_REGEX_</option>
+      </store>
+      </storage>
+      
+      
+	<actions>
+	</actions>
+
+      <log FileName="_PATH_REGEX_/damaris_log/exa_dbg" RotationSize="5" LogFormat="[%TimeStamp%]: %Message%"  Flush="True"  LogLevel="debug" />
+
+</simulation>
+)V0G0N";
+            damaris::model::ModifyModel myMod = damaris::model::ModifyModel(damaris_config_xml);  
+            // The map file find all occurences of the string in position 1 and repalce it/them with string in position 2
+            std::map<std::string,std::string> find_replace_map = {
+                {"_SHMEM_BUFFER_BYTES_REGEX_","67108864"},
+                {"_DC_REGEX_","1"},
+                {"_DN_REGEX_","0"},
+                {"_MORE_VARIABLES_REGEX_",""},
+                {"_PATH_REGEX_", eclipseState_->getIOConfig().getOutputDir()},
+                {"_MYSTORE_OR_EMPTY_REGEX_","MyStore"},
+            };
+            myMod.RepalceWithRegEx(find_replace_map);
+            std::string damaris_xml_filename_str = eclipseState_->getIOConfig().getOutputDir() +"/damaris_config.xml" ;
             
+            if (mpiRank == 0) {            
+                myMod.SaveXMLStringToFile(damaris_xml_filename_str) ;
+            }
+           
+            int is_client ;
+            int damaris_err ;
+            MPI_Comm new_comm;
+            
+            /* Get the name of the Damaris input file from an environment variable if available */
+            const char *cs_damaris_xml_file = getenv("FLOW_DAMARIS_XML_FILE");
+            if (cs_damaris_xml_file != NULL)
+            {
+                std::cout << "INFO: initializing Damaris from environment variable FLOW_DAMARIS_XML_FILE: " << cs_damaris_xml_file << std::endl;
+                damaris_err = damaris_initialize(cs_damaris_xml_file, MPI_COMM_WORLD);
+                if (damaris_err != DAMARIS_OK ) {
+                    std::cerr << "ERROR: damaris_initialize() error via FLOW_DAMARIS_XML_FILE=" <<  cs_damaris_xml_file << std::endl ;
+                }
+            } else {
+                std::cout << "INFO: initializing Damaris using internally built file:" << damaris_xml_filename_str << std::endl;
+                damaris_err = damaris_initialize(damaris_xml_filename_str.c_str() , EclGenericVanguard::comm()) ;
+                if (damaris_err != DAMARIS_OK ) {
+                    std::cerr << "ERROR: damaris_initialize() error via built file:" <<  std::endl << myMod.GetConfigString() ;
+                }
+            }
+            
+            
+            damaris_start(&is_client) ;
+            isSimulationRank_ = (is_client > 0) ;
+            if (isSimulationRank_) {
+                damaris_client_comm_get (&new_comm) ;
+                EclGenericVanguard::setCommunication(std::make_unique<Parallel::Communication>(new_comm));
+            }
+ #endif
+ 
             setupTime_ = externalSetupTimer.elapsed();
             outputFiles_ = (outputMode != FileOutputMode::OUTPUT_NONE);
             

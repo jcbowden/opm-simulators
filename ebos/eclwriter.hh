@@ -248,7 +248,7 @@ public:
                                  UnitSystem::measure,
                                  data::TargetType,
                                  const std::vector<Scalar>&>;
-                                 
+        /* N.B. damarisUpdate should be set to true if at any time the model geometry changes */                         
         if (this->damarisUpdate == true)
         {
             int damaris_err = DAMARIS_OK;
