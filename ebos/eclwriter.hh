@@ -38,13 +38,15 @@
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 
 #include <dune/grid/common/partitionset.hh>
+// #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #include <limits>
 #include <stdexcept>
 #include <string>
 
 #if HAVE_DAMARIS
-#include <opm/simulators/utils/DamarisOutputModule.hpp>
+#include <opm/simulators/utils/DamarisOutputModule.hpp> 
+#include <opm/simulators/utils/DamarisVisDataWriter.hpp>
 #endif
 
 
@@ -155,6 +157,8 @@ public:
     {
 #ifdef HAVE_DAMARIS
         this->damarisUpdate_ = enableDamarisOutput_();
+        //this->damarisGeomWriter_  = nullptr ;
+        //this->damarisGeomWriter_ = new Opm::DamarisOutput::DamarisVisDataWriter<auto>(simulator.vanguard().gridView(), Dune::VTK::conforming) ;
 #endif
         this->eclOutputModule_ = std::make_unique<EclOutputBlackOilModule<TypeTag>>(simulator, this->wbp_index_list_, this->collectToIORank_);
         this->wbp_index_list_.clear();
@@ -298,6 +302,7 @@ public:
         eclOutputModule_->outputInjLog(reportStepNum, isSubStep, forceDisableInjOutput);
         eclOutputModule_->outputCumLog(reportStepNum, isSubStep, forceDisableCumOutput);
     }
+    
 
     void writeOutput(bool isSubStep)
     {
@@ -307,12 +312,36 @@ public:
 #ifdef HAVE_DAMARIS
         if (EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput)) {
             // N.B. damarisUpdate_ should be set to true if at any time the model geometry changes
+            const int rank = simulator_.vanguard().grid().comm().rank() ;
             if (this->damarisUpdate_) {
+                // const int rank = simulator_.vanguard().grid().comm().rank();
                 const auto& gridView = simulator_.gridView();
                 const auto& interior_elements = elements(gridView, Dune::Partitions::interior);
                 const int numElements = std::distance(interior_elements.begin(), interior_elements.end());
                 Opm::DamarisOutput::setupDamarisWritingPars(simulator_.vanguard().grid().comm(), numElements);
                 const std::vector<int>& local_to_global = this->collectToIORank_.localIdxToGlobalIdxMapping();
+                int damaris_err ;
+
+                // Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid> >
+                std::cout << "INFO: Testing Damaris error string function with DAMARIS_OK            : " << damaris_error_string(DAMARIS_OK) << std::endl ;
+                std::cout << "INFO: Testing Damaris error string function with DAMARIS_ERROR_UNKNOWN : " << damaris_error_string(DAMARIS_ERROR_UNKNOWN) << std::endl ;
+                std::cout << "INFO: Testing Damaris error string function with 1001                  : " << damaris_error_string(1001) << std::endl ;
+                
+                
+                Opm::DamarisVisOutput::DamarisVisDataWriter damarisGeomWriter(gridView, Dune::VTK::conforming) ;
+                // damarisGeomWriter = new DamarisVisDataWriter(gridView, Dune::VTK::conforming);
+               //  damarisGeomWriter.setupGeomData() ;  // called in the constructor.
+                damarisGeomWriter.printGridDetails() ;
+                damarisGeomWriter.printDamarisVarNames( rank ) ; 
+                const bool hasPolyCells = damarisGeomWriter.hasPolyhedralCells() ;
+                if ( hasPolyCells ) {
+                    std::cout << "The Grid has polyhedral elements - we will need to define extra connectivity arrays" << std::endl ;
+                } 
+                
+                damarisGeomWriter.PassVertexDataToDamaris( rank ) ;
+                damarisGeomWriter.PassConnectivityDataToDamaris( rank ) ;
+                
+                
                 damaris_write("GLOBAL_CELL_INDEX", local_to_global.data());
                 // By default we assume static grid
                 this->damarisUpdate_ = false;
@@ -321,6 +350,9 @@ public:
             if (!isSubStep) {
                 // Output the PRESSURE field
                 if (this->eclOutputModule_->getPRESSURE_ptr() != nullptr) {
+                    int iteration ;
+                    damaris_get_iteration(&iteration) ;
+                    std::cout << "Rank " << rank << " INFO: File \"eclwrite.hh\",  Iteration = " << iteration << " PRESSURE data being writen to Damaris" << std::endl ;
                     damaris_write("PRESSURE", (void*)this->eclOutputModule_->getPRESSURE_ptr());
                     damaris_end_iteration();
                 }
@@ -543,8 +575,11 @@ private:
     Simulator& simulator_;
     std::unique_ptr<EclOutputBlackOilModule<TypeTag>> eclOutputModule_;
     Scalar restartTimeStepSize_;
+    
+    // DamarisOutput::DamarisVisDataWriter<>  * damarisGeomWriter_ ;
 #ifdef HAVE_DAMARIS
     bool damarisUpdate_ = false;  ///< Whenever this is true writeOutput() will set up Damaris offsets of model fields
+    
 #endif
 };
 } // namespace Opm
