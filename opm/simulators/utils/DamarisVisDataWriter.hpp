@@ -68,7 +68,8 @@ namespace Opm::DamarisVisOutput
   template< class GridView >
   class DamarisVisDataWriter {
 
-
+    // These relate to Coduit Blueprint MCArray data types (see https://llnl-conduit.readthedocs.io/en/v0.8.1/blueprint_mcarray.html )
+    typedef enum { VERTEX_SEPARATE_X_Y_Z, VERTEX_INTERLEAVED_A_OF_S, VERTEX_CONTIGUOUS_S_OF_A,  VERTEX_INTERLEAVED_MIXED_A_OF_S } vertex_data_structure ;
 
     // extract types
     typedef typename GridView::Grid Grid;
@@ -1056,27 +1057,26 @@ namespace Opm::DamarisVisOutput
   template <typename T>
   void SetPointersToDamarisShmem( std::string damaris_variable_name, T** ret_ptr, int rank )
   {
-     int nverticies = this->getNVertices();
-     int damaris_err ;
+        int damaris_err ;
 
-    T * temp_ptr ;
-    // Allocate memory in the shared memory section... 
-    damaris_err = damaris_alloc(damaris_variable_name.c_str(), (void **) &temp_ptr) ;
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::SetDataVertexPointers: damaris_alloc(\"" << damaris_variable_name <<"\", (void **) &ret_ptr)" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-    }
-    *ret_ptr = temp_ptr ;
+        T * temp_ptr ;
+        // Allocate memory in the shared memory section... 
+        damaris_err = damaris_alloc(damaris_variable_name.c_str(), (void **) &temp_ptr) ;
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::SetDataVertexPointers: damaris_alloc(\"" << damaris_variable_name <<"\", (void **) &ret_ptr)" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        }
+        *ret_ptr = temp_ptr ;
   }
   
   
   
   void SetDamarisParameter(std::string param_name, int paramSizeVal, int rank) 
   {
-    int damaris_err ;
-    damaris_err = damaris_parameter_set(param_name.c_str(), &paramSizeVal, sizeof(int));
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::SetDataVertexPointers : damaris_parameter_set(\"" << param_name << "\", paramSizeVal, sizeof(int));  Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-    }
+        int damaris_err ;
+        damaris_err = damaris_parameter_set(param_name.c_str(), &paramSizeVal, sizeof(int));
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::SetDataVertexPointers : damaris_parameter_set(\"" << param_name << "\", paramSizeVal, sizeof(int));  Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        }
   }
   
   template <typename T>
@@ -1095,36 +1095,46 @@ namespace Opm::DamarisVisOutput
         
   }
   
-  void VertexArraysCommitAndClear( int rank ) 
+  void VertexArraysCommitAndClear( vertex_data_structure vertex_structure, int rank ) 
   {
     int damaris_err ;
-    // Signal to Damaris we are done writing data for this iteration
-    damaris_err = damaris_commit (coordset_coords_values_x.c_str()) ;
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << coordset_coords_values_x <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-    }
-    damaris_err = damaris_commit (coordset_coords_values_y.c_str()) ;
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << coordset_coords_values_y <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-    }
-    damaris_err = damaris_commit (coordset_coords_values_z.c_str()) ;
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << coordset_coords_values_z <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-    }
     
-    // Signal to Damaris we are done accessing data for this iteration
-    damaris_err = damaris_clear(coordset_coords_values_x.c_str()) ;
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << coordset_coords_values_x << "\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+    if (vertex_structure == VERTEX_SEPARATE_X_Y_Z) {
+            
+        // Signal to Damaris we are done writing data for this iteration
+        damaris_err = damaris_commit (coordset_coords_values_x.c_str()) ;
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << coordset_coords_values_x <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        }
+        damaris_err = damaris_commit (coordset_coords_values_y.c_str()) ;
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << coordset_coords_values_y <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        }
+        damaris_err = damaris_commit (coordset_coords_values_z.c_str()) ;
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << coordset_coords_values_z <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        }
+        
+        // Signal to Damaris we are done accessing data for this iteration
+        damaris_err = damaris_clear(coordset_coords_values_x.c_str()) ;
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << coordset_coords_values_x << "\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        }
+        damaris_err = damaris_clear(coordset_coords_values_y.c_str()) ;
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << coordset_coords_values_y << "\")" <<  ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        }
+        damaris_err = damaris_clear(coordset_coords_values_z.c_str()) ;
+        if (damaris_err != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << coordset_coords_values_z << "\")" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        } 
+    } else if (vertex_structure == VERTEX_INTERLEAVED_A_OF_S) { 
+    
+    } else if (vertex_structure == VERTEX_CONTIGUOUS_S_OF_A) {
+        
+    } else if (vertex_structure == VERTEX_INTERLEAVED_MIXED_A_OF_S) {
+        
     }
-    damaris_err = damaris_clear(coordset_coords_values_y.c_str()) ;
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << coordset_coords_values_y << "\")" <<  ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-    }
-    damaris_err = damaris_clear(coordset_coords_values_z.c_str()) ;
-    if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << coordset_coords_values_z << "\")" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-    }  
   }
   
 
@@ -1133,29 +1143,29 @@ namespace Opm::DamarisVisOutput
     // Signal to Damaris we are done writing data for this iteration
     damaris_err = damaris_commit (topologies_topo_elements_connectivity.c_str()) ;
     if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << topologies_topo_elements_connectivity <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::ConnectivityArraysCommitAndClear : damaris_commit(\"" << topologies_topo_elements_connectivity <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
     }
     damaris_err = damaris_commit (topologies_topo_elements_offsets.c_str()) ;
     if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << topologies_topo_elements_offsets <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::ConnectivityArraysCommitAndClear : damaris_commit(\"" << topologies_topo_elements_offsets <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
     }
     damaris_err = damaris_commit (topologies_topo_elements_types.c_str()) ;
     if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_commit(\"" << topologies_topo_elements_types <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::ConnectivityArraysCommitAndClear : damaris_commit(\"" << topologies_topo_elements_types <<"\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
     }
     
     // Signal to Damaris we are done accessing data for this iteration
     damaris_err = damaris_clear(topologies_topo_elements_connectivity.c_str()) ;
     if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << topologies_topo_elements_connectivity << "\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::ConnectivityArraysCommitAndClear : damaris_clear(\"" << topologies_topo_elements_connectivity << "\")"  << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
     }
     damaris_err = damaris_clear(topologies_topo_elements_offsets.c_str()) ;
     if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << topologies_topo_elements_offsets << "\")" <<  ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::ConnectivityArraysCommitAndClear : damaris_clear(\"" << topologies_topo_elements_offsets << "\")" <<  ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
     }
     damaris_err = damaris_clear(topologies_topo_elements_types.c_str()) ;
     if (damaris_err != DAMARIS_OK) {
-        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::VertexArraysCommitAndClear : damaris_clear(\"" << topologies_topo_elements_types << "\")" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+        std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::ConnectivityArraysCommitAndClear : damaris_clear(\"" << topologies_topo_elements_types << "\")" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
     }  
   }
   
@@ -1174,35 +1184,49 @@ namespace Opm::DamarisVisOutput
         if (damaris_err != DAMARIS_OK) {
             std::cerr << "ERROR rank =" << rank << " : DamarisVisDataWriter::PassVertexDataToDamaris : damaris_alloc(\"coordsets/coords/values/x\", (void **) &x_dptr)" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
         }
+        
+        // We may wnat to select this by reading a Damaris paramater value. 
+        // Then the user can choose the data structure via XML file
+        this->vertex_structure_ = VERTEX_SEPARATE_X_Y_Z ; 
+        
+        if (vertex_structure_ == VERTEX_SEPARATE_X_Y_Z) {
+            if (vartype == DAMARIS_TYPE_DOUBLE)
+            {
+                std::cout << "INFO: The damaris variable has type \"double\"" << std::endl ;
+                double * x_dptr ;
+                double * y_dptr ;
+                double * z_dptr ;
+                
+                this->SetDataVertexPointers(&x_dptr, &y_dptr, &z_dptr, rank) ;
 
-        if (vartype == DAMARIS_TYPE_DOUBLE)
-        {
-            std::cout << "INFO: The damaris variable has type \"double\"" << std::endl ;
-            double * x_dptr ;
-            double * y_dptr ;
-            double * z_dptr ;
+                // Write the data to the Damaris shared memory
+                this->writeGridPoints(x_dptr, y_dptr, z_dptr) ;
+                
+            }
+            else if (vartype == DAMARIS_TYPE_FLOAT)
+            {
+                std::cout << "INFO: The damaris vertex variable has type \"float\"" << std::endl ;
+                float * x_fptr ;
+                float * y_fptr ;
+                float * z_fptr ;
+                
+                // This allocates space in the Damaris shared memory region
+                this->SetDataVertexPointers(&x_fptr, &y_fptr, &z_fptr, rank) ;
+
+                // Write the data to the Damaris shared memory
+                this->writeGridPoints(x_fptr, y_fptr, z_fptr) ;
+            }        
+        } else if (vertex_structure_ == VERTEX_INTERLEAVED_A_OF_S) { 
+    
+        } else if (vertex_structure_ == VERTEX_CONTIGUOUS_S_OF_A) {
             
-            this->SetDataVertexPointers(&x_dptr, &y_dptr, &z_dptr, rank) ;
-
-            // Write the data to the Damaris shared memory
-            this->writeGridPoints(x_dptr, y_dptr, z_dptr) ;
+        } else if (vertex_structure_ == VERTEX_INTERLEAVED_MIXED_A_OF_S) {
             
         }
-        else if (vartype == DAMARIS_TYPE_FLOAT)
-        {
-            std::cout << "INFO: The damaris vertex variable has type \"float\"" << std::endl ;
-            float * x_fptr ;
-            float * y_fptr ;
-            float * z_fptr ;
-            
-            // This allocates space in the Damaris shared memory region
-            this->SetDataVertexPointers(&x_fptr, &y_fptr, &z_fptr, rank) ;
-
-            // Write the data to the Damaris shared memory
-            this->writeGridPoints(x_fptr, y_fptr, z_fptr) ;
-        }
+    
+    
         // Tell Damaris that we are finished writing (or reading) the vertex data
-        this->VertexArraysCommitAndClear( rank ) ;
+        this->VertexArraysCommitAndClear(vertex_structure_,  rank ) ;
 
     } else {
         std::cerr << "ERROR = " << rank << " : DamarisVisDataWriter::PassVertexDataToDamaris(): setupGeomData() has not been called" << std::endl ;
@@ -1210,6 +1234,38 @@ namespace Opm::DamarisVisOutput
     }
   }
   
+  template <typename T>
+  void SetConnectivityPtr( T ** connect_ptr,int rank )
+  {
+
+    int ncorners = this->getNCorners();
+    // this sets the size of the shared memory block obtained
+    this->SetDamarisParameter("n_connectivity_ph", ncorners, rank);
+    
+    this->SetPointersToDamarisShmem(topologies_topo_elements_connectivity, connect_ptr, rank) ; 
+  }
+  
+  template <typename T>
+  void SetOffsetPtr( T ** offset_ptr,int rank )
+  {
+    
+    int ncells = this->getNCells();
+    // this sets the size of the shared memory block obtained
+    this->SetDamarisParameter("n_offsets_types_ph", ncells, rank);
+    
+    this->SetPointersToDamarisShmem(topologies_topo_elements_offsets, offset_ptr, rank) ; 
+  }
+  
+  template <typename T>
+  void SetTypePtr( T ** type_ptr,int rank )
+  {
+    
+    int ncells = this->getNCells();
+    // this sets the size of the shared memory block obtained
+    this->SetDamarisParameter("n_offsets_types_ph", ncells, rank);
+    
+    this->SetPointersToDamarisShmem(topologies_topo_elements_types, type_ptr, rank) ; 
+  }
   
   void PassConnectivityDataToDamaris( int rank )
   {
@@ -1230,65 +1286,33 @@ namespace Opm::DamarisVisOutput
         if (connectvartype == DAMARIS_TYPE_INT)
         {
             std::cout << "INFO: The damaris connectvartype has type \"int\"" << std::endl ;
+            
             int * connect_intptr ;
             int * offset_intptr ;
-            std::vector<int> connect_vect ;
-            std::vector<int> offset_vect ;
             // this->SetDataConnectionPointers(&connect_intptr) ;
             
-            this->writeConnectivity(connect_vect) ;
-            int paramSizeVal = connect_vect.size() ;
-            this->SetDamarisParameter("n_connectivity_ph",  paramSizeVal,  rank) ;
-            // This allocates space in the Damaris shared memory region
-            this->SetPointersToDamarisShmem(topologies_topo_elements_connectivity, &connect_intptr, rank) ;    
-            std::cout << "Rank : " << rank << " INFO: The damaris connect_vect array has size = " << connect_vect.size() << std::endl ;            
-            for (int i = 0 ; i < connect_vect.size() ; i++)
-            {
-                connect_intptr[i] = connect_vect[i] ;
-            }
+            this->SetConnectivityPtr(&connect_intptr, rank) ;
+            this->writeConnectivity(connect_intptr) ;
             
-            this->writeOffsetsCells(offset_vect) ;
-            paramSizeVal = offset_vect.size() ;
-            this->SetDamarisParameter("n_offsets_types_ph",  paramSizeVal,  rank) ;
-            // This allocates space in the Damaris shared memory region
-            this->SetPointersToDamarisShmem(topologies_topo_elements_offsets, &offset_intptr, rank) ;
-            std::cout << "Rank : " << rank << " INFO: The damaris offset_vect array has size = " << offset_vect.size() << std::endl ;      
-            for (int i = 0 ; i < offset_vect.size() ; i++)
-            {
-                offset_intptr[i] = offset_vect[i] ;
-            }
+            
+            this->SetOffsetPtr(&offset_intptr, rank ) ;
+            this->writeOffsetsCells(offset_intptr) ;
+            
             
         }
         else if (connectvartype == DAMARIS_TYPE_LONG)
         {
             std::cout << "INFO: The damaris connectvartype variable has type \"long\"" << std::endl ;
-            long * connect_longptr ;
-            long * offset_longptr ;
-            std::vector<long> connect_vect ;
-            std::vector<long> offset_vect ;
+            long * connect_intptr ;
+            long * offset_intptr ;
             // this->SetDataConnectionPointers(&connect_intptr) ;
             
-            this->writeConnectivity(connect_vect) ;
-            int paramSizeVal = connect_vect.size() ;
-            this->SetDamarisParameter("n_connectivity_ph",  paramSizeVal,  rank) ;
-            // This allocates space in the Damaris shared memory region
-            this->SetPointersToDamarisShmem(topologies_topo_elements_connectivity, &connect_longptr, rank) ;   
-            std::cout << "Rank : " << rank << " INFO: The damaris connect_vect array has size = " << connect_vect.size() << std::endl ;                  
-            for (int i = 0 ; i < connect_vect.size() ; i++)
-            {
-                connect_longptr[i] = connect_vect[i] ;
-            }
+            this->SetConnectivityPtr(&connect_intptr, rank) ;
+            this->writeConnectivity(connect_intptr) ;
             
-            this->writeOffsetsCells(offset_vect) ;
-            paramSizeVal = offset_vect.size() ;
-            this->SetDamarisParameter("n_offsets_types_ph",  paramSizeVal,  rank) ;
-            // This allocates space in the Damaris shared memory region
-            this->SetPointersToDamarisShmem(topologies_topo_elements_offsets, &offset_longptr, rank) ;
-            std::cout << "Rank : " << rank << " INFO: The damaris offset_vect array has size = " << offset_vect.size() << std::endl ;      
-            for (int i = 0 ; i < offset_vect.size() ; i++)
-            {
-                offset_longptr[i] = offset_vect[i] ;
-            }
+
+            this->SetOffsetPtr(&offset_intptr, rank ) ;
+            this->writeOffsetsCells(offset_intptr) ;
         }
         
         
@@ -1303,17 +1327,8 @@ namespace Opm::DamarisVisOutput
         {
             std::cout << "INFO: The damaris celltypevartype has type \"char\"" << std::endl ;
             char * celltype_charptr ;
-            std::vector<char> celltype_vect ;
-            this->writeCellTypes(celltype_vect) ;
-            int paramSizeVal = celltype_vect.size() ;
-            this->SetDamarisParameter("n_offsets_types_ph",  paramSizeVal,  rank) ;  // this is re-set as it is set above
-            // This allocates space in the Damaris shared memory region
-            this->SetPointersToDamarisShmem(topologies_topo_elements_types, &celltype_charptr, rank) ;    
-            std::cout << "Rank : " << rank << " INFO: The damaris celltype_vect array has size = " << celltype_vect.size() << std::endl ; 
-            for (int i = 0 ; i < celltype_vect.size() ; i++)
-            {
-                celltype_charptr[i] = celltype_vect[i] ;
-            }
+            this->SetTypePtr(&celltype_charptr, rank) ;
+            this->writeCellTypes(celltype_charptr) ;
             
             
         }
@@ -1321,17 +1336,9 @@ namespace Opm::DamarisVisOutput
         {
             std::cout << "INFO: The damaris celltypevartype has type \"unsigned char\"" << std::endl ;
             unsigned char * celltype_ucharptr ;
-            std::vector<char> celltype_vect ;
-            this->writeCellTypes(celltype_vect) ;
-            int paramSizeVal = celltype_vect.size() ;
-            this->SetDamarisParameter("n_offsets_types_ph",  paramSizeVal,  rank) ; // this is re-set as it is set above
-            // This allocates space in the Damaris shared memory region
-            this->SetPointersToDamarisShmem(topologies_topo_elements_types, &celltype_ucharptr, rank) ;        
-            std::cout << "Rank : " << rank << " INFO: The damaris celltype_vect array has size = " << celltype_vect.size() << std::endl ;
-            for (int i = 0 ; i < celltype_vect.size() ; i++)
-            {
-                celltype_ucharptr[i] = celltype_vect[i] ;
-            }
+            this->SetTypePtr(&celltype_ucharptr, rank) ;
+            this->writeCellTypes(celltype_ucharptr) ;
+            
         } else {
             std::cout << "ERROR: DamarisVisDataWriter::PassConnectivityDataToDamaris The damaris celltypevartype did was not recognized!" << std::endl ;
         }
@@ -1380,6 +1387,13 @@ namespace Opm::DamarisVisOutput
     // hold its number in the iteration order (VertexIterator)
     std::vector<int> number;
     Dune::VTK::DataMode datamode;
+    
+    // These relate to Coduit Blueprint MCArray data types 
+    // (see https://llnl-conduit.readthedocs.io/en/v0.8.1/blueprint_mcarray.html )
+    // We may wnat to select this by reading a Damaris paramater value. 
+    // Then the user can choose the data structure via XML file
+    vertex_data_structure vertex_structure_ ; // choices are: individual x,y,z arrays, structure of arrays, or array of structures
+        
     // Dune::VTK::Precision coordPrec;
 
     // true if polyhedral cells are present in the grid

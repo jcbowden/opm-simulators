@@ -341,8 +341,10 @@ public:
                 damarisGeomWriter.PassVertexDataToDamaris( rank ) ;
                 damarisGeomWriter.PassConnectivityDataToDamaris( rank ) ;
                 
-                
-                damaris_write("GLOBAL_CELL_INDEX", local_to_global.data());
+                damaris_err = damaris_write("GLOBAL_CELL_INDEX", local_to_global.data());
+                if (damaris_err != DAMARIS_OK) {
+                        std::cerr << "ERROR rank =" << rank << " : eclwrite::writeOutput : damaris_write(\"GLOBAL_CELL_INDEX\", local_to_global.data())" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+                    }
                 // By default we assume static grid
                 this->damarisUpdate_ = false;
             }
@@ -351,10 +353,20 @@ public:
                 // Output the PRESSURE field
                 if (this->eclOutputModule_->getPRESSURE_ptr() != nullptr) {
                     int iteration ;
-                    damaris_get_iteration(&iteration) ;
+                    int damaris_err ;
+                    damaris_err = damaris_get_iteration(&iteration) ;
+                    if (damaris_err != DAMARIS_OK) {
+                        std::cerr << "ERROR rank =" << rank << " : eclwrite::writeOutput : damaris_get_iteration(&iteration)" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+                    }
                     std::cout << "Rank " << rank << " INFO: File \"eclwrite.hh\",  Iteration = " << iteration << " PRESSURE data being writen to Damaris" << std::endl ;
-                    damaris_write("PRESSURE", (void*)this->eclOutputModule_->getPRESSURE_ptr());
-                    damaris_end_iteration();
+                    damaris_err = damaris_write("PRESSURE", (void*)this->eclOutputModule_->getPRESSURE_ptr());
+                    if (damaris_err != DAMARIS_OK) {
+                        std::cerr << "ERROR rank =" << rank << " : eclwrite::writeOutput : damaris_write(\"PRESSURE\", (void*)this->eclOutputModule_->getPRESSURE_ptr())" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+                    }
+                    damaris_err = damaris_end_iteration();
+                    if (damaris_err != DAMARIS_OK) {
+                        std::cerr << "ERROR rank =" << rank << " : eclwrite::writeOutput : damaris_end_iteration()" << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
+                    }
                 }
             }
         }
