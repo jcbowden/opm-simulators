@@ -470,7 +470,7 @@ template<class TypeTag>
 struct DamarisLogLevel<TypeTag, TTag::EclBaseProblem> {
     static constexpr auto value = "trace";
 };
-DamarisLogLevel
+
 #endif
 // If available, write the ECL output in a non-blocking manner
 template<class TypeTag>

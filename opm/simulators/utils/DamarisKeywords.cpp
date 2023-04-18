@@ -18,6 +18,7 @@
 */
 
 #include <opm/simulators/utils/DamarisKeywords.hpp>
+#include <damaris/env/Environment.hpp>
 #include <string>
 #include <map>
 
@@ -52,9 +53,9 @@ DamarisKeywords(std::string OutputDir,
     
     std::string damarisOutputCollective_str("") ;
     if (enableDamarisOutputCollective) {
-        damarisOutputCollective_str="Collective"
+        damarisOutputCollective_str="Collective" ;
     } else {
-        damarisOutputCollective_str="FilePerCore"
+        damarisOutputCollective_str="FilePerCore" ;
     }
     
     std::string  simName_str  ;
@@ -67,30 +68,34 @@ DamarisKeywords(std::string OutputDir,
         simName_str = simName ;
     }
     
-    if (nDamarisCores > 0) && (nDamarisNodes > 0)
+    if ((nDamarisCores > 0) && (nDamarisNodes > 0))
     {
         nDamarisNodes = 0 ; // Default is to use Damaris Cores
     }
-    string nDamarisCores_str  ;
+    std::string nDamarisCores_str  ;
     if ( nDamarisCores != 0 ) {
-        nDamarisCores_str = to_string(nDamarisCores);
+        nDamarisCores_str = std::to_string(nDamarisCores);
     } else {
         nDamarisCores_str = "0" ;
     }
     
-    string nDamarisNodes_str  ;
-    if ( nDamarisNodes_str != 0 ) {
-        nDamarisNodes_str = to_string(nDamarisNodes);
+    std::string nDamarisNodes_str  ;
+    if ( nDamarisNodes != 0 ) {
+        nDamarisNodes_str = std::to_string(nDamarisNodes);
     } else {
         nDamarisNodes_str = "0" ;
     }
     
-    string shmemSizeBytes_str  ;
+    std::string shmemSizeBytes_str  ;
     if ( shmemSizeBytes != 0 ) {
-        shmemSizeBytes_str = to_string(shmemSizeBytes);
+        shmemSizeBytes_str = std::to_string(shmemSizeBytes);
     } else {
         shmemSizeBytes_str = "536870912" ;
     }
+    
+    std::string logLevel_str(logLevel) ;
+
+    
 
    // _MAKE_AVAILABLE_IN_PYTHON_
    // _PYTHON_SCRIPT_
