@@ -82,6 +82,36 @@ template<class TypeTag, class MyTypeTag>
 struct EnableDamarisOutputCollective {
     using type = UndefinedProperty;
 };
+template<class TypeTag, class MyTypeTag>
+struct DamarisSaveToHdf {
+    using type = UndefinedProperty;
+};
+template<class TypeTag, class MyTypeTag>
+struct DamarisPythonScript {
+    using type = UndefinedProperty;
+};
+template<class TypeTag, class MyTypeTag>
+struct DamarisSimName {
+    using type = UndefinedProperty;
+};
+template<class TypeTag, class MyTypeTag>
+struct DamarisDedicatedCores {
+    using type = UndefinedProperty;
+};
+template<class TypeTag, class MyTypeTag>
+struct DamarisDedicatedNodes {
+    using type = UndefinedProperty;
+};
+template<class TypeTag, class MyTypeTag>
+struct DamarisSharedMemeorySizeBytes {
+    using type = UndefinedProperty;
+};
+template<class TypeTag, class MyTypeTag>
+struct DamarisLogLevel {
+    using type = UndefinedProperty;
+};
+
+
 #endif
 template<class TypeTag, class MyTypeTag>
 struct EnableEsmry {
@@ -146,6 +176,23 @@ public:
 #ifdef HAVE_DAMARIS
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutputCollective,
                              "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one per Damaris core.");
+        EWOMS_REGISTER_PARAM(TypeTag, bool, DamarisSaveToHdf,
+                             "Set to false to prevent output to HDF5. Uses collective output by default or set --enable-damaris-collective=false to use file for Damaris server.");
+        EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisPythonScript,
+                             "Set to the path and filename of a Python script to run on Damaris server resources with access to OPM flow data.");
+        EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisSimName,
+                             "The name of the simulation to used by Damaris. If empty (the default) then Damaris uses \"opm-sim-<magic_number>\". \n \
+                             This name should preferably be unique as it is used for the Damaris shmem name and by the Python Dask library to locate sections of variables.");
+        EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisLogLevel,
+                             "The log level for the Damaris logging system (boost log based). \n \
+                             Levels are: [trace, debug, info, warning, error, fatal]. Currently debug and info are useful. ");
+        EWOMS_REGISTER_PARAM(TypeTag, int, DamarisDedicatedCores,
+                             "Set the number of dedicated cores (MPI processes) that should be used for Damaris processing.");
+        EWOMS_REGISTER_PARAM(TypeTag, int, DamarisDedicatedNodes,
+                             "Set the number of dedicated nodes (full nodes) that should be used for Damaris processing.");
+        EWOMS_REGISTER_PARAM(TypeTag, long, DamarisSharedMemeorySizeBytes,
+                             "Set the size of the shared memory buffer used for IPC between the simulation and the Damaris resources. Needs to hold all the variables published, possibly over multiple simulation iterations.");
+                             
 #endif
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableEsmry,
                              "Write ESMRY file for fast loading of summary data.");

@@ -32,22 +32,23 @@
 namespace Opm::DamarisOutput
 {
 
-std::string initDamarisXmlFile(); // Defined in initDamarisXMLFile.cpp, to avoid messing up this file.
+std::string initDamarisTemplateXmlFile(); // Defined in initDamarisXMLFile.cpp, to avoid messing up this file.
 
 
 void
-initializeDamaris(MPI_Comm comm, int mpiRank, std::string outputDir, bool enableDamarisOutputCollective)
+initializeDamaris(MPI_Comm comm, int mpiRank, std::map<std::string, std::string>& find_replace_map )
 {
-    if (outputDir.empty()) {
-        outputDir = ".";
-    }
+
     // Prepare the XML file
-    std::string damaris_config_xml = initDamarisXmlFile();
+    std::string damaris_config_xml = initDamarisTemplateXmlFile();  // This is the template for a Damaris XML file
     damaris::model::ModifyModel myMod = damaris::model::ModifyModel(damaris_config_xml);
     // The map will make it precise the output directory and FileMode (either FilePerCore or Collective storage)
     // The map file find all occurences of the string in position 1 and repalce it/them with string in position 2
-    std::map<std::string, std::string> find_replace_map = DamarisKeywords(outputDir, enableDamarisOutputCollective);
+    // std::map<std::string, std::string> find_replace_map = DamarisKeywords(outputDir, enableDamarisOutputCollective);
     myMod.RepalceWithRegEx(find_replace_map);
+    
+    
+    std::string outputDir = find_replace_map["_PATH_REGEX_"] ;
     std::string damaris_xml_filename_str = outputDir + "/damaris_config.xml";
 
     if (mpiRank == 0) {

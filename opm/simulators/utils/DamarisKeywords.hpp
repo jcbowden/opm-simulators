@@ -34,7 +34,16 @@
 namespace Opm::DamarisOutput
 {
 
-std::map<std::string,std::string> DamarisKeywords(std::string outputDir, bool enableDamarisOutputCollective);
+std::map<std::string,std::string> DamarisKeywords(std::string outputDir,
+                                 bool enableDamarisOutputCollective, 
+                                 bool saveToHDF5=true, 
+                                 int nDamarisCores=0,
+                                 int nDamarisNodes=0,
+                                 int shmemSizeBytes=0,
+                                 std::string pythonFilename="", 
+                                 std::string simName="", 
+                                 std::string logLevel="info",
+                                 std::string paraviewPythonFilename="");
 
 } // namespace Opm::DamarisOutput
 

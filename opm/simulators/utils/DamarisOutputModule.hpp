@@ -32,10 +32,10 @@
 namespace Opm::DamarisOutput
 {
  // Initialize an XML file
- std::string initDamarisXmlFile();
+ std::string initDamarisTemplateXmlFile();
  
  // Initialize Damaris by filling in th XML file and storing it in the chosen directory
- void initializeDamaris(MPI_Comm comm, int mpiRank, std::string OutputDir, bool enableDamarisOutputCollective);
+ void initializeDamaris(MPI_Comm comm, int mpiRank, std::map<std::string, std::string>& find_replace_map );
  
 /** 
 * Set up Damaris Parameters for writing e.g., grid size and communicator to output "PRESSURE" field

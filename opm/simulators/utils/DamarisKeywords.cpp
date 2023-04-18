@@ -33,31 +33,85 @@
 namespace Opm::DamarisOutput
 {
 std::map<std::string, std::string>
-DamarisKeywords(std::string OutputDir, bool enableDamarisOutputCollective)
+DamarisKeywords(std::string OutputDir, 
+                    bool enableDamarisOutputCollective, 
+                    bool saveToHDF5, 
+                    int  nDamarisCores,
+                    int  nDamarisNodes,
+                    long shmemSizeBytes,
+                    std::string pythonFilename, 
+                    std::string simName, 
+                    std::string logLevel,
+                    std::string paraviewPythonFilename )
 {
+    std::string saveToHDF5_str("MyStore") ;
+    if (! saveToHDF5 )  saveToHDF5 = "" ;
+    
+    std::string publishToPython_str("") ;
+    if (pythonFilename != "") publishToPython_str="PythonScript" ; // the name of the PyScript XML element
+    
+    std::string damarisOutputCollective_str("") ;
     if (enableDamarisOutputCollective) {
-        std::map<std::string, std::string> damaris_keywords = {
-            {"_SHMEM_BUFFER_BYTES_REGEX_", "536870912"},
-            {"_DC_REGEX_", "1"},
-            {"_DN_REGEX_", "0"},
-            {"_File_Mode", "Collective"},
-            {"_MORE_VARIABLES_REGEX_", ""},
-            {"_PATH_REGEX_", OutputDir},
-            {"_MYSTORE_OR_EMPTY_REGEX_", "MyStore"},
-        };
-        return damaris_keywords;
+        damarisOutputCollective_str="Collective"
     } else {
-        std::map<std::string, std::string> damaris_keywords = {
-            {"_SHMEM_BUFFER_BYTES_REGEX_", "536870912"},
-            {"_DC_REGEX_", "1"},
-            {"_DN_REGEX_", "0"},
-            {"_File_Mode", "FilePerCore"},
-            {"_MORE_VARIABLES_REGEX_", ""},
-            {"_PATH_REGEX_", OutputDir},
-            {"_MYSTORE_OR_EMPTY_REGEX_", "MyStore"},
-        };
-        return damaris_keywords;
+        damarisOutputCollective_str="FilePerCore"
     }
+    
+    std::string  simName_str  ;
+    if (simName == "") {
+        // Having a different simulation name is important if multiple simulations 
+        // are running on the same node, as it is used to name the simulations shmem area
+        // and when one sim finishes it removes its shmem file.
+        simName_str = "opm-sim-" + damaris::Environment::GetMagicNumber() ;
+    } else {
+        simName_str = simName ;
+    }
+    
+    if (nDamarisCores > 0) && (nDamarisNodes > 0)
+    {
+        nDamarisNodes = 0 ; // Default is to use Damaris Cores
+    }
+    string nDamarisCores_str  ;
+    if ( nDamarisCores != 0 ) {
+        nDamarisCores_str = to_string(nDamarisCores);
+    } else {
+        nDamarisCores_str = "0" ;
+    }
+    
+    string nDamarisNodes_str  ;
+    if ( nDamarisNodes_str != 0 ) {
+        nDamarisNodes_str = to_string(nDamarisNodes);
+    } else {
+        nDamarisNodes_str = "0" ;
+    }
+    
+    string shmemSizeBytes_str  ;
+    if ( shmemSizeBytes != 0 ) {
+        shmemSizeBytes_str = to_string(shmemSizeBytes);
+    } else {
+        shmemSizeBytes_str = "536870912" ;
+    }
+
+   // _MAKE_AVAILABLE_IN_PYTHON_
+   // _PYTHON_SCRIPT_
+
+    std::map<std::string, std::string> damaris_keywords = {
+        {"_SHMEM_BUFFER_BYTES_REGEX_", shmemSizeBytes_str},
+        {"_DC_REGEX_", nDamarisCores_str},
+        {"_DN_REGEX_", nDamarisNodes_str},
+        {"_File_Mode", damarisOutputCollective_str},
+        {"_MORE_VARIABLES_REGEX_", ""},
+        {"_PATH_REGEX_", OutputDir},
+        {"_MYSTORE_OR_EMPTY_REGEX_", saveToHDF5_str},
+        {"_PARAVIEW_PYTHON_SCRIPT_",""},  /* this has to be before _PYTHON_SCRIPT_ entry */
+        {"_PYTHON_SCRIPT_",pythonFilename}, /* if a Python script is speified then assume that we want to publish the data to Python */
+        {"_PRESSURE_UNIT_","Pa"},
+        {"_MAKE_AVAILABLE_IN_PYTHON_",publishToPython_str},  /* must match  <pyscript name="PythonScript" */
+        {"_SIM_NAME_",simName_str},
+        {"_LOG_LEVEL_",logLevel_str},
+    };
+    return damaris_keywords;
+    
 }
 
 } // namespace Opm::DamarisOutput
