@@ -1,6 +1,7 @@
 /*
-  Copyright 2021 Equinor.
-
+  Copyright 2023 Inria, Bretagne–Atlantique Research Center
+  Copyright 2022 SINTEF Digital, Mathematics and Cybernetics.
+  
   This file is part of the Open Porous Media project (OPM).
 
   OPM is free software: you can redistribute it and/or modify
@@ -20,6 +21,8 @@
 #include <opm/simulators/utils/DamarisKeywords.hpp>
 #include <damaris/env/Environment.hpp>
 #include <string>
+#include <random>
+#include <limits>
 #include <map>
 
 /*
@@ -27,8 +30,7 @@
     in the built-in XML file.
 
     The entries in the map below will be filled by the corresponding
-    Damaris Keywords. Yet, only output directory and FileMode are to
-    be chosen by the user
+    Damaris Keywords. 
 */
 
 namespace Opm::DamarisOutput
@@ -50,6 +52,7 @@ DamarisKeywords(MPI_Comm comm, std::string OutputDir,
     
     std::string publishToPython_str("") ;
     if (pythonFilename != "") publishToPython_str="PythonScript" ; // the name of the PyScript XML element
+   
     
     std::string damarisOutputCollective_str("") ;
     if (enableDamarisOutputCollective) {
@@ -63,7 +66,17 @@ DamarisKeywords(MPI_Comm comm, std::string OutputDir,
         // Having a different simulation name is important if multiple simulations 
         // are running on the same node, as it is used to name the simulations shmem area
         // and when one sim finishes it removes its shmem file.
-        simName_str = "opm-sim-" + damaris::Environment::GetMagicNumber(comm) ;
+        // simName_str = "opm-sim-" + damaris::Environment::GetMagicNumber(comm) ;
+        
+        // We will just add a random value for now as GetMagicNumber(comm) requires latest Damaris
+        // Seed with a real random value, if available
+        std::random_device r;
+     
+        // Choose a random mean between 0 and MAX_INT
+        std::default_random_engine e1(r());
+        std::uniform_int_distribution<int> uniform_dist(0, std::numeric_limits<int>::max());
+        int rand_int = uniform_dist(e1);
+        simName_str = "opm-sim-" + std::to_string(rand_int) ;
     } else {
         simName_str = simName ;
     }
@@ -106,9 +119,9 @@ DamarisKeywords(MPI_Comm comm, std::string OutputDir,
         {"_DN_REGEX_", nDamarisNodes_str},
         {"_File_Mode", damarisOutputCollective_str},
         {"_MORE_VARIABLES_REGEX_", ""},
-        {"_PATH_REGEX_", OutputDir},
+        {"_PATH_REGEX_", OutputDir},   /* Do Not change the string "_PATH_REGEX_" as it is used to search for the output path */
         {"_MYSTORE_OR_EMPTY_REGEX_", saveToHDF5_str},
-        {"_PARAVIEW_PYTHON_SCRIPT_",""},  /* this has to be before _PYTHON_SCRIPT_ entry */
+        {"_PARAVIEW_PYTHON_SCRIPT_",paraviewPythonFilename},  /* this has to be before _PYTHON_SCRIPT_ entry */
         {"_PYTHON_SCRIPT_",pythonFilename}, /* if a Python script is speified then assume that we want to publish the data to Python */
         {"_PRESSURE_UNIT_","Pa"},
         {"_MAKE_AVAILABLE_IN_PYTHON_",publishToPython_str},  /* must match  <pyscript name="PythonScript" */

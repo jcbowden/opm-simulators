@@ -91,6 +91,10 @@ struct DamarisPythonScript {
     using type = UndefinedProperty;
 };
 template<class TypeTag, class MyTypeTag>
+struct DamarisPythonParaviewScript {
+    using type = UndefinedProperty;
+};
+template<class TypeTag, class MyTypeTag>
 struct DamarisSimName {
     using type = UndefinedProperty;
 };
@@ -175,14 +179,20 @@ public:
                              "Write the ECL-formated results in a non-blocking way (i.e., using a separate thread).");
 #ifdef HAVE_DAMARIS
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutputCollective,
-                             "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one file per Damaris core. (Collective vs FilePerCore)");
+                             "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one file per Damaris core \n \
+                                                  (Collective vs FilePerCore).");
         EWOMS_REGISTER_PARAM(TypeTag, bool, DamarisSaveToHdf,
-                             "Set to false to prevent output to HDF5. Uses collective output by default or set --enable-damaris-collective=false to use file per core (file per Damaris server).");
+                             "Set to false to prevent output to HDF5. Uses collective output by default or set --enable-damaris-collective=false to\n \
+                                                  use file per core (file per Damaris server).");
         EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisPythonScript,
                              "Set to the path and filename of a Python script to run on Damaris server resources with access to OPM flow data.");
+        EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisPythonParaviewScript,
+                             "Set to the path and filename of a Paraview Python script to run on Paraview Catalyst (1 or 2) on Damaris server \n \
+                                                 resources with access to OPM flow data.");
         EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisSimName,
                              "The name of the simulation to be used by Damaris. If empty (the default) then Damaris uses \"opm-sim-<magic_number>\". \n \
-                                                 This name should preferably be unique as it is used for the Damaris shmem name and by the Python Dask library to locate sections of variables.");
+                                                 This name should preferably be unique as it is used for the Damaris shmem name and by the Python Dask \n \
+                                                 library to locate sections of variables.");
         EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisLogLevel,
                              "The log level for the Damaris logging system (boost log based). \n \
                                                  Levels are: [trace, debug, info, warning, error, fatal]. Currently debug and info are useful. ");

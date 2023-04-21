@@ -159,8 +159,8 @@ public:
     int runStatic()
     {
         int exitCode = EXIT_SUCCESS;
-        if (isSimulationRank_) {
-            if (initialize_<TypeTag>(exitCode)) {
+        if (initialize_<TypeTag>(exitCode)) {
+            if (isSimulationRank_) {
                 return this->dispatchStatic_<TypeTag>();
             }
         }
@@ -333,6 +333,7 @@ private:
         enableDamarisOutputCollective_ = EWOMS_GET_PARAM(PreTypeTag, bool, EnableDamarisOutputCollective) ;
         saveToDamarisHDF5_             = EWOMS_GET_PARAM(PreTypeTag, bool, DamarisSaveToHdf);
         damarisPythonFilename_         = EWOMS_GET_PARAM(PreTypeTag, std::string, DamarisPythonScript);
+        damarisPythonParaviewFilename_ = EWOMS_GET_PARAM(PreTypeTag, std::string, DamarisPythonParaviewScript);
         damarisSimName_                = EWOMS_GET_PARAM(PreTypeTag, std::string, DamarisSimName);
         
         nDamarisCores_                 = EWOMS_GET_PARAM(PreTypeTag, int, DamarisDedicatedCores);
@@ -372,8 +373,8 @@ private:
                                                                                                    shmemSizeBytes_,
                                                                                                    damarisPythonFilename_,
                                                                                                    damarisSimName_,
-                                                                                                   damarisLogLevel_
-                                                                                                   
+                                                                                                   damarisLogLevel_,
+                                                                                                   damarisPythonParaviewFilename_
                                                                                                        );
 
         if (enableDamarisOutput_) {
@@ -744,6 +745,7 @@ private:
     bool enableDamarisOutputCollective_ = true ;
     bool saveToDamarisHDF5_ = true ;
     std::string damarisPythonFilename_ = "" ;
+    std::string damarisPythonParaviewFilename_ = "" ;
     std::string damarisSimName_  = ""       ; // empty defaults to opm-sim-<magic_number>
     std::string damarisLogLevel_ = "info"   ;
     int nDamarisCores_   = 1 ;
