@@ -20,9 +20,12 @@
 #ifndef OPM_DAMARISKEYWORDS_HEADER_INCLUDED
 #define OPM_DAMARISKEYWORDS_HEADER_INCLUDED
 
+#include <Damaris.h>
 #include <string>
 #include <map>
 
+#include <opm/simulators/utils/ParallelCommunication.hpp>
+// #include <ebos/eclgenericvanguard.hh>
 /*
     Below is the std::map with the keywords that are supported by Damaris.
 
@@ -34,7 +37,8 @@
 namespace Opm::DamarisOutput
 {
 
-std::map<std::string,std::string> DamarisKeywords(std::string OutputDir, 
+std::map<std::string,std::string> DamarisKeywords(MPI_Comm comm,
+                    std::string OutputDir, 
                     bool enableDamarisOutputCollective, 
                     bool saveToHDF5, 
                     int  nDamarisCores,

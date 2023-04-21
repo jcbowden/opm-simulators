@@ -34,7 +34,7 @@
 namespace Opm::DamarisOutput
 {
 std::map<std::string, std::string>
-DamarisKeywords(std::string OutputDir, 
+DamarisKeywords(MPI_Comm comm, std::string OutputDir, 
                     bool enableDamarisOutputCollective, 
                     bool saveToHDF5, 
                     int  nDamarisCores,
@@ -63,7 +63,7 @@ DamarisKeywords(std::string OutputDir,
         // Having a different simulation name is important if multiple simulations 
         // are running on the same node, as it is used to name the simulations shmem area
         // and when one sim finishes it removes its shmem file.
-        simName_str = "opm-sim-" + damaris::Environment::GetMagicNumber() ;
+        simName_str = "opm-sim-" + damaris::Environment::GetMagicNumber(comm) ;
     } else {
         simName_str = simName ;
     }

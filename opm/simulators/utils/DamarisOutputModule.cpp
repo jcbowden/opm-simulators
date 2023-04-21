@@ -38,23 +38,6 @@ std::string initDamarisTemplateXmlFile(); // Defined in initDamarisXMLFile.cpp, 
 void
 initializeDamaris(MPI_Comm comm, int mpiRank, std::map<std::string, std::string>& find_replace_map )
 {
-
-    // Prepare the XML file
-    std::string damaris_config_xml = initDamarisTemplateXmlFile();  // This is the template for a Damaris XML file
-    damaris::model::ModifyModel myMod = damaris::model::ModifyModel(damaris_config_xml);
-    // The map will make it precise the output directory and FileMode (either FilePerCore or Collective storage)
-    // The map file find all occurences of the string in position 1 and repalce it/them with string in position 2
-    // std::map<std::string, std::string> find_replace_map = DamarisKeywords(outputDir, enableDamarisOutputCollective);
-    myMod.RepalceWithRegEx(find_replace_map);
-    
-    
-    std::string outputDir = find_replace_map["_PATH_REGEX_"] ;
-    std::string damaris_xml_filename_str = outputDir + "/damaris_config.xml";
-
-    if (mpiRank == 0) {
-        myMod.SaveXMLStringToFile(damaris_xml_filename_str);
-    }
-
     int damaris_err;
 
     /* Get the name of the Damaris input file from an environment variable if available */
@@ -68,10 +51,24 @@ initializeDamaris(MPI_Comm comm, int mpiRank, std::map<std::string, std::string>
                       << std::endl;
         }
     } else {
+         // Prepare the XML file
+        std::string damaris_config_xml = initDamarisTemplateXmlFile();  // This is the template for a Damaris XML file
+        damaris::model::ModifyModel myMod = damaris::model::ModifyModel(damaris_config_xml);
+        // The map will make it precise the output directory and FileMode (either FilePerCore or Collective storage)
+        // The map file find all occurences of the string in position 1 and repalce it/them with string in position 2
+        // std::map<std::string, std::string> find_replace_map = DamarisKeywords(outputDir, enableDamarisOutputCollective);
+        myMod.RepalceWithRegEx(find_replace_map);
+        
+        std::string outputDir = find_replace_map["_PATH_REGEX_"] ;
+        std::string damaris_xml_filename_str = outputDir + "/damaris_config.xml";
+
+        if (mpiRank == 0) {
+            myMod.SaveXMLStringToFile(damaris_xml_filename_str);
+        }
         std::cout << "INFO: initializing Damaris using internally built file:" << damaris_xml_filename_str << std::endl;
         damaris_err = damaris_initialize(damaris_xml_filename_str.c_str(), comm);
         if (damaris_err != DAMARIS_OK) {
-            std::cerr << "ERROR: damaris_initialize() error via built file:" << std::endl << myMod.GetConfigString();
+            std::cerr << "ERROR: damaris_initialize() error via OPM internally built file:" << std::endl << myMod.GetConfigString();
         }
     }
 }

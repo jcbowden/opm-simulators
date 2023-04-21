@@ -175,23 +175,26 @@ public:
                              "Write the ECL-formated results in a non-blocking way (i.e., using a separate thread).");
 #ifdef HAVE_DAMARIS
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutputCollective,
-                             "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one per Damaris core.");
+                             "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one file per Damaris core. (Collective vs FilePerCore)");
         EWOMS_REGISTER_PARAM(TypeTag, bool, DamarisSaveToHdf,
-                             "Set to false to prevent output to HDF5. Uses collective output by default or set --enable-damaris-collective=false to use file for Damaris server.");
+                             "Set to false to prevent output to HDF5. Uses collective output by default or set --enable-damaris-collective=false to use file per core (file per Damaris server).");
         EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisPythonScript,
                              "Set to the path and filename of a Python script to run on Damaris server resources with access to OPM flow data.");
         EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisSimName,
-                             "The name of the simulation to used by Damaris. If empty (the default) then Damaris uses \"opm-sim-<magic_number>\". \n \
-                             This name should preferably be unique as it is used for the Damaris shmem name and by the Python Dask library to locate sections of variables.");
+                             "The name of the simulation to be used by Damaris. If empty (the default) then Damaris uses \"opm-sim-<magic_number>\". \n \
+                                                 This name should preferably be unique as it is used for the Damaris shmem name and by the Python Dask library to locate sections of variables.");
         EWOMS_REGISTER_PARAM(TypeTag, std::string, DamarisLogLevel,
                              "The log level for the Damaris logging system (boost log based). \n \
-                             Levels are: [trace, debug, info, warning, error, fatal]. Currently debug and info are useful. ");
+                                                 Levels are: [trace, debug, info, warning, error, fatal]. Currently debug and info are useful. ");
         EWOMS_REGISTER_PARAM(TypeTag, int, DamarisDedicatedCores,
-                             "Set the number of dedicated cores (MPI processes) that should be used for Damaris processing.");
+                             "Set the number of dedicated cores (MPI processes) that should be used for Damaris processing (per node). \n \
+                                                 Must divide evenly into the number of simulation ranks (client ranks).");
         EWOMS_REGISTER_PARAM(TypeTag, int, DamarisDedicatedNodes,
-                             "Set the number of dedicated nodes (full nodes) that should be used for Damaris processing.");
+                             "Set the number of dedicated nodes (full nodes) that should be used for Damaris processing (per simulation). \n \
+                                                 Must divide evenly into the number of simulation nodes.");
         EWOMS_REGISTER_PARAM(TypeTag, long, DamarisSharedMemeorySizeBytes,
-                             "Set the size of the shared memory buffer used for IPC between the simulation and the Damaris resources. Needs to hold all the variables published, possibly over multiple simulation iterations.");
+                             "Set the size of the shared memory buffer used for IPC between the simulation and the Damaris resources. \n \
+                                                 Needs to hold all the variables published, possibly over multiple simulation iterations.");
                              
 #endif
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableEsmry,

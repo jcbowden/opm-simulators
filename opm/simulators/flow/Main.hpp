@@ -359,9 +359,12 @@ private:
                     std::string logLevel,
                     std::string paraviewPythonFilename
                     */
-        // The map will make it precise the output directory and FileMode (either FilePerCore or Collective storage)
+        // The map will specify the output directory and Damaris HDF5 FileMode (either FilePerCore or Collective storage)
         // The map file find all occurences of the string in position 1 and repalce it/them with string in position 2
-        std::map<std::string, std::string> find_replace_map = Opm::DamarisOutput::DamarisKeywords(outputDir, 
+        // We pass the comm object as it is needed to initialize (and distribute) the simulation 'magic number' which is used to
+        // name the simulation by default. It is used in the Damaris XML file that is written from initDamarisXmlFile.cpp
+        std::map<std::string, std::string> find_replace_map = Opm::DamarisOutput::DamarisKeywords(EclGenericVanguard::comm(),
+                                                                                                   outputDir, 
                                                                                                    enableDamarisOutputCollective_, 
                                                                                                    saveToDamarisHDF5_, 
                                                                                                    nDamarisCores_,
