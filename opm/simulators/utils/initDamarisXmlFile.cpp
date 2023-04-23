@@ -1,5 +1,5 @@
 /*
-  Copyright 2022 Inria, Bretagne–Atlantique Research Center
+  Copyright 2022 2023 Inria, Bretagne–Atlantique Research Center
   Copyright 2022 SINTEF Digital, Mathematics and Cybernetics.
 
   This file is part of the Open Porous Media project (OPM).
@@ -32,7 +32,7 @@ namespace Opm::DamarisOutput
     
     N.B. Ensure all text items that are to be replaced are quoted with double quotes
     e.g. unit="_REPLACE_UNIT_"   
-    *not* unit=_REPLACE_UNIT_
+    *not* unit=_REPLACE_UNIT_ unless the quotes are included
 */
 std::string initDamarisTemplateXmlFile()
 {

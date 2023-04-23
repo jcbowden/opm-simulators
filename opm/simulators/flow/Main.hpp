@@ -3,6 +3,7 @@
   Copyright 2014 Dr. Blatt - HPC-Simulation-Software & Services
   Copyright 2015 IRIS AS
   Copyright 2014 STATOIL ASA.
+  Copyright 2023 Inria, Bretagne–Atlantique Research Center
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -144,11 +145,10 @@ public:
     int runDynamic()
     {
         int exitCode = EXIT_SUCCESS;
-        {
-            if (initialize_<Properties::TTag::FlowEarlyBird>(exitCode)) {
-                if (isSimulationRank_)  {
-                    return this->dispatchDynamic_();
-                }
+       
+        if (initialize_<Properties::TTag::FlowEarlyBird>(exitCode)) {
+            if (isSimulationRank_) {
+                return this->dispatchDynamic_();
             }
         }
 
@@ -451,7 +451,7 @@ private:
                 exitCode = EXIT_FAILURE;
                 return false;
             }
-        }  // if (isSimulationRank_)
+        }
         exitCode = EXIT_SUCCESS;
         return true;
     }
