@@ -3,8 +3,7 @@
   Copyright 2014 Dr. Blatt - HPC-Simulation-Software & Services
   Copyright 2015 IRIS AS
   Copyright 2014 STATOIL ASA.
-  Copyright 2023 Inria, Bretagne–Atlantique Research Center
-
+  Copyright 2023 Inria
   This file is part of the Open Porous Media project (OPM).
 
   OPM is free software: you can redistribute it and/or modify
@@ -143,7 +142,6 @@ public:
     int runDynamic()
     {
         int exitCode = EXIT_SUCCESS;
-       
         if (initialize_<Properties::TTag::FlowEarlyBird>(exitCode)) {
             if (isSimulationRank_) {
                 return this->dispatchDynamic_();
@@ -390,7 +388,7 @@ private:
                                EWOMS_GET_PARAM(PreTypeTag, std::string, OutputMode),
                                !EWOMS_GET_PARAM(PreTypeTag, bool, SchedRestart),
                                EWOMS_GET_PARAM(PreTypeTag, bool,  EnableLoggingFalloutWarning),
-                               EWOMS_GET_PARAM(PreTypeTag, bool, EclStrictParsing),
+                               EWOMS_GET_PARAM(PreTypeTag, std::string, ParsingStrictness),
                                mpiRank,
                                EWOMS_GET_PARAM(PreTypeTag, int, EclOutputInterval),
                                cmdline_params,

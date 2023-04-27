@@ -37,7 +37,7 @@ namespace Opm::DamarisOutput
 std::string initDamarisXmlFile()
 {
     std::string init_damaris = R"V0G0N(<?xml version="1.0"?>
-<simulation name="opm-flow-sim" language="c" xmlns="http://damaris.gforge.inria.fr/damaris/model">
+<simulation name="opm-flow" language="c" xmlns="http://damaris.gforge.inria.fr/damaris/model">
 <architecture>
     <domains count="1"/>
     <dedicated cores="_DC_REGEX_" nodes="_DN_REGEX_"/>
@@ -54,7 +54,7 @@ std::string initDamarisXmlFile()
     <layout   name="zonal_layout_usmesh_integer"             type="int" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
     <variable name="GLOBAL_CELL_INDEX"    layout="zonal_layout_usmesh_integer"     type="scalar"  visualizable="false"  time-varying="false"  centering="zonal" />
     <layout   name="zonal_layout_usmesh"             type="double" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
-    <variable name="PRESSURE"    layout="zonal_layout_usmesh"     type="scalar"  visualizable="false" select-file="GLOBAL_CELL_INDEX"     unit="bar"   centering="zonal"  store="_MYSTORE_OR_EMPTY_REGEX_" />
+    <variable name="PRESSURE"    layout="zonal_layout_usmesh"     type="scalar"  visualizable="false"     unit="Bar"   centering="zonal"  store="_MYSTORE_OR_EMPTY_REGEX_"  script="PythonScript" />
     _MORE_VARIABLES_REGEX_
     
     
@@ -106,11 +106,11 @@ std::string initDamarisXmlFile()
 </storage>
 
 <scripts>
-    <pyscript name="PythonScript" file="polygonal_mesh_conduit.py" language="python" frequency="1" scheduler-file="" nthreads="0" keep-workers="no" />
+    <pyscript name="PythonScript" file="opm_python_script.py" language="python" frequency="1" scheduler-file="" nthreads="0" keep-workers="no" />
 </scripts>
 
 <paraview update-frequency="1" >
-        <script></script>
+        <script>paraview_script.py</script>
 </paraview>
 
 <actions>
