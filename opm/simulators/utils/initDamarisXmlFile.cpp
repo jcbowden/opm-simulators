@@ -54,7 +54,8 @@ std::string initDamarisTemplateXmlFile()
     <layout   name="zonal_layout_usmesh_integer"             type="int" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
     <variable name="GLOBAL_CELL_INDEX"    layout="zonal_layout_usmesh_integer"     type="scalar"  visualizable="false"  time-varying="false"  centering="zonal" />
     <layout   name="zonal_layout_usmesh"             type="double" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
-    <variable name="PRESSURE"    layout="zonal_layout_usmesh"     type="scalar"  visualizable="false"     unit="_PRESSURE_UNIT_"   centering="zonal"  store="_MYSTORE_OR_EMPTY_REGEX_"  script="_MAKE_AVAILABLE_IN_PYTHON_" />
+    <variable name="PRESSURE"    layout="zonal_layout_usmesh"     type="scalar"  visualizable="false"     unit="_PRESSURE_UNIT_"   centering="zonal" select-file="GLOBAL_CELL_INDEX" store="_MYSTORE_OR_EMPTY_REGEX_"  script="PythonScript" />
+
     _MORE_VARIABLES_REGEX_
     
     
@@ -70,7 +71,7 @@ std::string initDamarisTemplateXmlFile()
     <parameter name="n_connectivity_ph"        type="int"  value="1" />
     <layout    name="n_connections_layout_ph"  type="int"  dimensions="n_connectivity_ph"   comment="Layout for connectivities "  />
     <parameter name="n_offsets_types_ph"       type="int"  value="1" />
-    <layout    name="n_offsets_layout_ph"      type="int"  dimensions="n_offsets_types_ph"  comment="Layout for the offsets_ph"  />
+    <layout    name="n_offsets_layout_ph"      type="int"  dimensions="n_offsets_types_ph + 1"  comment="Layout for the offsets_ph"  />
     <layout    name="n_types_layout_ph"        type="char" dimensions="n_offsets_types_ph"  comment="Layout for the types_ph "  />
     <group name="topologies/topo/elements">
         <variable name="connectivity" layout="n_connections_layout_ph"  type="scalar"  visualizable="false"    script="_MAKE_AVAILABLE_IN_PYTHON_" time-varying="false" />

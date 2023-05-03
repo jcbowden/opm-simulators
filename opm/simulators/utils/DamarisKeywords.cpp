@@ -122,7 +122,7 @@ DamarisKeywords(MPI_Comm comm, std::string OutputDir,
         {"_PATH_REGEX_", OutputDir},   /* Do Not change the string "_PATH_REGEX_" as it is used to search for the output path */
         {"_MYSTORE_OR_EMPTY_REGEX_", saveToHDF5_str},
         {"_PARAVIEW_PYTHON_SCRIPT_",paraviewPythonFilename},  /* this has to be before _PYTHON_SCRIPT_ entry */
-        {"_PYTHON_SCRIPT_",pythonFilename}, /* if a Python script is speified then assume that we want to publish the data to Python */
+        {"_PYTHON_SCRIPT_",pythonFilename}, /* if a Python script is specified then assume that we want to publish the data to Python */
         {"_PRESSURE_UNIT_","Pa"},
         {"_MAKE_AVAILABLE_IN_PYTHON_",publishToPython_str},  /* must match  <pyscript name="PythonScript" */
         {"_SIM_NAME_",simName_str},

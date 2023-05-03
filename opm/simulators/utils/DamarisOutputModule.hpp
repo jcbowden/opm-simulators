@@ -1,7 +1,7 @@
 /*
   Copyright 2023 Inria, Bretagne–Atlantique Research Center
   Copyright 2022 SINTEF Digital, Mathematics and Cybernetics.
-
+  Copyright 2023 Inria
   This file is part of the Open Porous Media project (OPM).
 
   OPM is free software: you can redistribute it and/or modify
