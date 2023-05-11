@@ -328,6 +328,13 @@ private:
 #if HAVE_DAMARIS
         // The defaults for the paramaters are set in ebos/eclwriter.hh
         enableDamarisOutput_           = EWOMS_GET_PARAM(PreTypeTag, bool, EnableDamarisOutput);
+         // Reset to false as we cannot use Damaris if there is only one rank.
+        if ((enableDamarisOutput_ == true) && (EclGenericVanguard::comm().size() == 1)) {
+            std::string msg ;
+            msg = "\nUse of Damaris (command line argument --enable-damaris-output=true) has been dissabled for run with only one rank.\n" ;
+            OpmLog::info(msg);
+            enableDamarisOutput_ = false ;
+        }
         enableDamarisOutputCollective_ = EWOMS_GET_PARAM(PreTypeTag, bool, EnableDamarisOutputCollective) ;
         saveToDamarisHDF5_             = EWOMS_GET_PARAM(PreTypeTag, bool, DamarisSaveToHdf);
         damarisPythonFilename_         = EWOMS_GET_PARAM(PreTypeTag, std::string, DamarisPythonScript);

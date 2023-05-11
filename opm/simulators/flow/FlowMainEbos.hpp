@@ -131,7 +131,7 @@ void handleExtraConvergenceOutput(SimulatorReport& report,
             EWOMS_REGISTER_PARAM(TypeTag, bool, EnableLoggingFalloutWarning,
                                  "Developer option to see whether logging was on non-root processors. In that case it will be appended to the *.DBG or *.PRT files");
 
-            Simulator::registerParameters();
+            // Simulator::registerParameters();  // <JB> this is called in the next function also
 
             // register the parameters inherited from ebos
             registerAllParameters_<TypeTag>(/*finalizeRegistration=*/false);
