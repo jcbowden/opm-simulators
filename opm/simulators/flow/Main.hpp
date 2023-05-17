@@ -383,7 +383,10 @@ private:
                                                                                                        );
 
         if (enableDamarisOutput_) {
-            this->setupDamaris( outputDir, find_replace_map );
+            int numPhases = countPhases(deckFilename) ; 
+            std::cout << "The number of phases found in the input deck was: " << numPhases << std::endl ;
+            if (numPhases > 0)
+               this->setupDamaris( outputDir, find_replace_map );
         }
 #endif // HAVE_DAMARIS
         // if isSimulationRank_ is false, then the rank is a Damaris server rank, so do no further processing here.
@@ -722,6 +725,7 @@ private:
     }
 
 #if HAVE_DAMARIS
+    int countPhases(std::string& filename) ;
     void setupDamaris(const std::string& outputDir, std::map<std::string, std::string>& find_replace_map );
 #endif
 

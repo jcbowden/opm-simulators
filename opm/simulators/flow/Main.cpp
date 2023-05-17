@@ -27,6 +27,21 @@
 #include <opm/input/eclipse/Schedule/Action/State.hpp>
 #include <opm/input/eclipse/Schedule/UDQ/UDQState.hpp>
 
+
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Parser/ParseContext.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/GridDims.hpp>
+
+#include <opm/input/eclipse/Parser/ParserKeywords/B.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/G.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/F.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/O.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/P.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/S.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/T.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/W.hpp>
+
 #include <opm/simulators/flow/Banners.hpp>
 #include <opm/simulators/utils/readDeck.hpp>
 
@@ -235,7 +250,50 @@ void Main::setupVanguard()
     EclGenericVanguard::modelParams_.wtestState_ = std::move(wtestState_);
 }
 
+
 #if HAVE_DAMARIS
+
+int Main::countPhases(std::string& deckFilename)
+{
+   std::string deckFilenameChecked ;
+   using PreVanguard = GetPropType<Properties::TTag::FlowEarlyBird, Properties::Vanguard>;
+    try {
+        deckFilenameChecked = PreVanguard::canonicalDeckPath(deckFilename);
+    }
+    catch (const std::exception& e) {
+       return -1 ;
+    }
+            
+            
+    // auto errorGuard = std::make_unique<ErrorGuard>();
+    Opm::Parser parser ;
+    auto parseContext = setupParseContext(false);
+
+    //const auto deck = readDeckFile(deckFilename, checkDeck, parser,
+    //                                       *parseContext, treatCriticalAsNonCritical, errorGuard);
+                                           
+    Opm::Deck deck(parser.parseFile(deckFilenameChecked, *parseContext));
+
+    std::bitset< NUM_PHASES_IN_ENUM > bits ;
+    
+    bits[0] = deck.hasKeyword<Opm::ParserKeywords::OIL>(); 
+    bits[1] = deck.hasKeyword<Opm::ParserKeywords::GAS>() || deck.hasKeyword<Opm::ParserKeywords::GASWAT>();
+    bits[2] = deck.hasKeyword<Opm::ParserKeywords::WATER>() || deck.hasKeyword<Opm::ParserKeywords::GASWAT>();
+    bits[3] = deck.hasKeyword<Opm::ParserKeywords::SOLVENT>();
+    bits[4] = deck.hasKeyword<Opm::ParserKeywords::POLYMER>();
+    bits[5] = deck.hasKeyword<Opm::ParserKeywords::THERMAL>() || deck.hasKeyword<Opm::ParserKeywords::TEMP>();
+    bits[6] = deck.hasKeyword<Opm::ParserKeywords::POLYMW>();
+    bits[7] = deck.hasKeyword<Opm::ParserKeywords::FOAM>();
+    bits[8] = deck.hasKeyword<Opm::ParserKeywords::BRINE>();
+    bits[9] = deck.hasKeyword<Opm::ParserKeywords::PVTSOL>();
+    
+    Opm::GridDims gfd = Opm::GridDims(deck) ;
+    std::cout << "Total cellsdimensions: " << " NX: "  << gfd.getNX()  <<  " NY: "  << gfd.getNY()  <<  " NZ: "  << gfd.getNZ()   <<  " total number: "  << gfd.getCartesianSize() << std::endl ;
+
+    return (bits.count() ) ;
+}
+
+
 void Main::setupDamaris(const std::string& outputDir , std::map<std::string, std::string>& find_replace_map)
 {
     if (!outputDir.empty()) {

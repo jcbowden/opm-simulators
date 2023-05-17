@@ -1167,7 +1167,9 @@ public:
         }
         }
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
-        eclWriter_->evalSummaryState(isSubStep);
+        
+        if ((enableEclOutput_) || (enableDamarisOutput_))            
+            eclWriter_->evalSummaryState(isSubStep);
 
         int episodeIdx = this->episodeIndex();
 
