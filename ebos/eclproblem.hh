@@ -182,6 +182,7 @@ class EclProblem : public GetPropType<TypeTag, Properties::BaseProblem>
     using DimMatrix = Dune::FieldMatrix<Scalar, dimWorld, dimWorld>;
 
     using EclWriterType = EclWriter<TypeTag>;
+    using DamarisWriterType = DamarisWriter<TypeTag>;
 
     using TracerModel = EclTracerModel<TypeTag>;
     using DirectionalMobilityPtr = Opm::Utility::CopyablePtr<DirectionalMobility<TypeTag, Evaluation>>;
@@ -202,6 +203,8 @@ public:
     {
         ParentType::registerParameters();
         EclWriterType::registerParameters();
+        DamarisWriterType::registerParameters();
+        
         VtkEclTracerModule<TypeTag>::registerParameters();
 
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableWriteAllSolutions,
@@ -291,13 +294,15 @@ public:
 
         // create the ECL writer
         eclWriter_ = std::make_unique<EclWriterType>(simulator);
-
+#ifdef HAVE_DAMARIS
+        // create Damaris writer
+        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator);     
+        enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
+#endif
         enableDriftCompensation_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableDriftCompensation);
 
         enableEclOutput_     = EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput);
-#ifdef HAVE_DAMARIS        
-        enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
-#endif
+        
         if constexpr (enableExperiments)
             enableAquifers_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableAquifers);
         else
@@ -726,16 +731,18 @@ public:
         ParentType::writeOutput(verbose);
 
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
-        if (enableEclOutput_){
-            eclWriter_->writeOutput(isSubStep);
-        }
         
+        data::Solution localCellData = {};
 #ifdef HAVE_DAMARIS
+        // N.B. the Damaris output has to be done before the ECL output as the ECL one 
+        // does all kinds of std::move() relocation of data
         if (enableDamarisOutput_) {
-            eclWriter_->writeDamarisOutput(isSubStep);
+            damarisWriter_->writeOutput(localCellData, isSubStep) ;
         }
 #endif 
-
+         if (enableEclOutput_){
+            eclWriter_->writeOutput(localCellData, isSubStep);
+        }
     }
 
     void finalizeOutput() {
@@ -743,6 +750,9 @@ public:
         // this will write all pending output to disk
         // to avoid corruption of output files
         eclWriter_.reset();
+#ifdef HAVE_DAMARIS
+        damarisWriter_.reset();  // This is a usinque_ptr method
+#endif 
     }
 
 
@@ -2537,11 +2547,12 @@ private:
     EclAquiferModel aquiferModel_;
 
     bool enableEclOutput_;
+    std::unique_ptr<EclWriterType> eclWriter_;
+    
 #ifdef HAVE_DAMARIS
     bool enableDamarisOutput_ = false ;
+    std::unique_ptr<DamarisWriterType> damarisWriter_;
 #endif 
-    
-    std::unique_ptr<EclWriterType> eclWriter_;
 
     PffGridVector<GridView, Stencil, PffDofData_, DofMapper> pffDofData_;
     TracerModel tracerModel_;

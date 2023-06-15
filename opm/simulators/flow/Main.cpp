@@ -27,6 +27,8 @@
 #include <opm/input/eclipse/Schedule/Action/State.hpp>
 #include <opm/input/eclipse/Schedule/UDQ/UDQState.hpp>
 
+#include <ebos/collecttoiorank.hh>
+
 #include <opm/simulators/flow/Banners.hpp>
 #include <opm/simulators/utils/readDeck.hpp>
 
@@ -247,6 +249,7 @@ void Main::setupVanguard()
 }
 
 #if HAVE_DAMARIS
+
 void Main::setupDamaris(const std::string& outputDir,
                         const bool enableDamarisOutputCollective)
 {
@@ -256,10 +259,36 @@ void Main::setupDamaris(const std::string& outputDir,
 
     // By default EnableDamarisOutputCollective is true so all simulation results will
     // be written into one single file for each iteration using Parallel HDF5.
-    // It set to false, FilePerCore mode is used in Damaris, then simulation results in each
+    // If set to false, FilePerCore mode is used in Damaris, then simulation results in each
     // node are aggregated by dedicated Damaris cores and stored to separate files per Damaris core.
     // Irrespective of mode, output is written asynchronously at the end of each timestep.
     // Using the ModifyModel class to set the XML file for Damaris.
+  /*  using DamarisWriterType = DamarisWriter<int>;
+    using CollectDataToIORankType = CollectDataToIORank<GetPropType<TypeTagEarlyBird, Properties::Grid>,GetPropType<TypeTagEarlyBird, Properties::EquilGrid>,GetPropType<TypeTagEarlyBird, Properties::GridView>>;
+
+    
+    std::unique_ptr<EclOutputBlackOilModule<CollectDataToIORankType>> damarisOutputModule_; 
+    
+   // const Simulator placeholder_simulator;
+   //auto& placeholder_simulator = this->simulator() ;
+    const std::vector<std::size_t> placeholder_wbp_index_list;
+    CollectDataToIORankType placeholder_collectToIORank ;
+    damarisOutputModule_ = std::make_unique<EclOutputBlackOilModule<CollectDataToIORankType>>(nullptr, placeholder_wbp_index_list, placeholder_collectToIORank);
+    //damarisOutputModule_ = std::make_unique<EclOutputBlackOilModule<DamarisWriterType>>({}, {}, {});
+    data::Solution solution_names ;
+    bool textOnly = true ;
+    damarisOutputModule_->assignToSolution(solution_names, textOnly);
+    
+    std::cout << "INFO: Main.cpp setupDamaris() assignToSolution()  has been called " << std::endl ;
+        for ( auto damVar : solution_names ) {
+           // std::map<std::string, data::CellData>
+          const std::string name = damVar.first ;
+          data::CellData  dataCol = damVar.second ;
+          std::cout << "Name of Damaris Varaiable : " << name << "  Size : "  << dataCol.data.size() <<  std::endl ;  // dataCol.data().size()
+          
+        }
+    
+    */
     DamarisOutput::initializeDamaris(EclGenericVanguard::comm(), EclGenericVanguard::comm().rank(), outputDir, enableDamarisOutputCollective);
     int is_client;
     MPI_Comm new_comm;
