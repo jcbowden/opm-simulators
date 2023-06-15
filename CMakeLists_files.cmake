@@ -32,6 +32,7 @@ list (APPEND MAIN_SOURCE_FILES
   ebos/eclgenerictracermodel.cc
   ebos/eclgenericvanguard.cc
   ebos/eclgenericwriter.cc
+  ebos/damarisgenericwriter.cc
   ebos/eclinterregflows.cc
   ebos/ecltransmissibility.cc
   ebos/equil/equilibrationhelpers.cc

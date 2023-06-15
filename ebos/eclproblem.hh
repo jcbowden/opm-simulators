@@ -40,6 +40,7 @@
 #include "eclactionhandler.hh"
 #include "eclequilinitializer.hh"
 #include "eclwriter.hh"
+#include "damariswriter.hh"
 #include "ecloutputblackoilmodule.hh"
 #include "ecltransmissibility.hh"
 #include "eclthresholdpressure.hh"
@@ -119,6 +120,7 @@ struct EclBaseProblem {
   using InheritsFrom = std::tuple<VtkEclTracer, EclOutputBlackOil, EclCpGridVanguard>;
 };
 #endif
+
 }
 
 // The class which deals with ECL wells
@@ -426,8 +428,10 @@ template<class TypeTag>
 struct EnableEclOutput<TypeTag,TTag::EclBaseProblem> {
     static constexpr bool value = true;
 };
+
 #ifdef HAVE_DAMARIS
-//! Enable the Damaris output by default
+
+//! Disable the Damaris output by default
 template<class TypeTag>
 struct EnableDamarisOutput<TypeTag, TTag::EclBaseProblem> {
     static constexpr bool value = false;
@@ -438,7 +442,9 @@ template<class TypeTag>
 struct EnableDamarisOutputCollective<TypeTag, TTag::EclBaseProblem> {
     static constexpr bool value = true;
 };
+
 #endif
+
 // If available, write the ECL output in a non-blocking manner
 template<class TypeTag>
 struct EnableAsyncEclOutput<TypeTag, TTag::EclBaseProblem> {
@@ -676,6 +682,7 @@ class EclProblem : public GetPropType<TypeTag, Properties::BaseProblem>
     using DimMatrix = Dune::FieldMatrix<Scalar, dimWorld, dimWorld>;
 
     using EclWriterType = EclWriter<TypeTag>;
+    using DamarisWriterType = DamarisWriter<TypeTag>;
 
     using TracerModel = EclTracerModel<TypeTag>;
     using DirectionalMobilityPtr = Opm::Utility::CopyablePtr<DirectionalMobility<TypeTag, Evaluation>>;
@@ -698,6 +705,8 @@ public:
     {
         ParentType::registerParameters();
         EclWriterType::registerParameters();
+        DamarisWriterType::registerParameters();
+        
         VtkEclTracerModule<TypeTag>::registerParameters();
 
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableWriteAllSolutions,
@@ -789,13 +798,15 @@ public:
 
         // create the ECL writer
         eclWriter_ = std::make_unique<EclWriterType>(simulator);
-
+#ifdef HAVE_DAMARIS
+        // create Damaris writer
+        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator);     
+        enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
+#endif
         enableDriftCompensation_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableDriftCompensation);
 
         enableEclOutput_     = EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput);
-#ifdef HAVE_DAMARIS        
-        enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
-#endif
+        
         if constexpr (enableExperiments)
             enableAquifers_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableAquifers);
         else
@@ -1203,16 +1214,18 @@ public:
         ParentType::writeOutput(verbose);
 
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
-        if (enableEclOutput_){
-            eclWriter_->writeOutput(isSubStep);
-        }
         
+        data::Solution localCellData = {};
 #ifdef HAVE_DAMARIS
+        // N.B. the Damaris output has to be done before the ECL output as the ECL one 
+        // does all kinds of std::move() relocation of data
         if (enableDamarisOutput_) {
-            eclWriter_->writeDamarisOutput(isSubStep);
+            damarisWriter_->writeOutput(localCellData, isSubStep) ;
         }
 #endif 
-
+         if (enableEclOutput_){
+            eclWriter_->writeOutput(localCellData, isSubStep);
+        }
     }
 
     void finalizeOutput() {
@@ -1220,6 +1233,9 @@ public:
         // this will write all pending output to disk
         // to avoid corruption of output files
         eclWriter_.reset();
+#ifdef HAVE_DAMARIS
+        damarisWriter_.reset();  // This is a usinque_ptr method
+#endif 
     }
 
 
@@ -3073,11 +3089,12 @@ private:
     EclAquiferModel aquiferModel_;
 
     bool enableEclOutput_;
+    std::unique_ptr<EclWriterType> eclWriter_;
+    
 #ifdef HAVE_DAMARIS
     bool enableDamarisOutput_ = false ;
+    std::unique_ptr<DamarisWriterType> damarisWriter_;
 #endif 
-    
-    std::unique_ptr<EclWriterType> eclWriter_;
 
     PffGridVector<GridView, Stencil, PffDofData_, DofMapper> pffDofData_;
     TracerModel tracerModel_;
