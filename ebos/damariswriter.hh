@@ -144,6 +144,12 @@ public:
     {
         //    this->damarisUpdate_ = enableDamarisOutput_();
         this->damarisUpdate_ = true ;
+        
+        rank_ = simulator_.vanguard().grid().comm().rank() ;
+        const auto& gridView = simulator_.gridView();
+        const auto& interior_elements = elements(gridView, Dune::Partitions::interior);
+        // Get the size of the unique vector elements (excludes the shared 'ghost' elements)
+        numElements_ = std::distance(interior_elements.begin(), interior_elements.end());
 
         this->damarisOutputModule_ = std::make_unique<EclOutputBlackOilModule<TypeTag>>(simulator, this->wbp_index_list_, this->collectToIORank_);
         this->wbp_index_list_.clear();
@@ -213,12 +219,16 @@ public:
     {
         OPM_TIMEBLOCK(writeOutput);
         const int reportStepNum = simulator_.episodeIndex() + 1;
+        std::cout << "INFO: damarisWriter_->writeOutput() prepareLocalCellData being called " << std::endl ;
+        
+        if (!isSubStep)
+            this->damarisOutputModule_->invalidateLocalData() ;  // <jcb> added this as localCellData was not being written
         this->prepareLocalCellData(isSubStep, reportStepNum);
         this->damarisOutputModule_->outputErrorLog(simulator_.gridView().comm());
 
         // output using eclWriter if enabled
-        /*
-            The damarisWriter is not outputing well or aquifer data (yet)
+       
+        //    The damarisWriter is not outputing well or aquifer data (yet)
             auto localWellData = simulator_.problem().wellModel().wellData(); // data::Well
             auto localAquiferData = simulator_.problem().aquiferModel().aquiferData();
             auto localWellTestState = simulator_.problem().wellModel().wellTestState();
@@ -226,9 +236,9 @@ public:
             const bool isFlowsn = this->damarisOutputModule_->hasFlowsn();
             auto floresn = this->damarisOutputModule_->getFloresn();
             const bool isFloresn = this->damarisOutputModule_->hasFloresn();
-        */ 
         
-         auto localWellData = simulator_.problem().wellModel().wellData(); // data::Well
+        
+        // auto localWellData = simulator_.problem().wellModel().wellData(); // data::Well
         // data::Solution localCellData = {};
         if (! isSubStep) {
             
@@ -240,26 +250,40 @@ public:
             this->damarisOutputModule_->addRftDataToWells(localWellData, reportStepNum);
         } // end of ! isSubstep
 
-            this->writeDamarisGridOutput(isSubStep) ;
-            int rank =simulator_.vanguard().grid().comm().rank() ;
-            
-            // if (rank == 0) {
-            std::cout << "INFO: damarisWriter_->writeOutput() has been called " << std::endl ;
-            for ( auto damVar : localCellData ) {
-               // std::map<std::string, data::CellData>
-              const std::string name = damVar.first ;
-              data::CellData  dataCol = damVar.second ;
-              std::cout << "Name of Damaris Varaiable       : (" << rank << ")  "  << name << "  Size : "  << dataCol.data.size() <<  std::endl ;  // dataCol.data().size()
-            }
-            
-            auto mybloc = damarisOutputModule_->getBlockData() ;
-            for ( auto damVar : mybloc ) {
-               // std::map<std::string, data::CellData>
-              const std::string name = std::get<0>(damVar.first) ;
-              const int part = std::get<1>(damVar.first) ;
-              double  dataCol = damVar.second ;
-              std::cout << "Name of Damaris Block Varaiable : (" << rank << ")  "  << "  part : " << part << "  Value : "  << dataCol <<  std::endl ;  // dataCol.data().size()
-            }
+        this->writeDamarisGridOutput(isSubStep) ;
+        // int rank =simulator_.vanguard().grid().comm().rank() ;
+        
+        // if (rank == 0) {
+        
+        for ( auto damVar : localCellData ) {
+           // std::map<std::string, data::CellData>
+          const std::string name = damVar.first ;
+          data::CellData  dataCol = damVar.second ;
+          std::cout << "Name of Damaris Varaiable       : (" << rank_ << ")  "  << name << "  Size : "  << dataCol.data.size() <<  std::endl ;  // dataCol.data().size()
+          
+          /*if (name == "PRESSURE") {
+              if (dataCol.data.data() != nullptr) {
+                  damaris_write(name.c_str(), (void*) dataCol.data.data() ) ;
+              }
+                    //damaris_write("PRESSURE", (void*)this->damarisOutputModule_->getPRESSURE_ptr());
+          }*/
+        }
+        
+        this->writeDamarisCellDataOutput(localCellData, isSubStep) ;
+        
+        auto mybloc = damarisOutputModule_->getBlockData() ;
+        for ( auto damVar : mybloc ) {
+           // std::map<std::string, data::CellData>
+          const std::string name = std::get<0>(damVar.first) ;
+          const int part = std::get<1>(damVar.first) ;
+          double  dataCol = damVar.second ;
+          std::cout << "Name of Damaris Block Varaiable : (" << rank_ << ")  "  << name  << "  part : " << part << "  Value : "  << dataCol <<  std::endl ;  // dataCol.data().size()
+        }
+        
+        if (! isSubStep)
+        {
+            //damaris_end_iteration();
+        }
         /*
             For ECL ouput this section used: 
             this->collectToIORank_.collect()
@@ -289,7 +313,10 @@ public:
 
 private:
 
-
+    int damaris_err_ ;
+    int rank_  ;//  = simulator_.vanguard().grid().comm().rank() ;
+    int numElements_ ;
+    
     static bool enableDamarisOutput_()
     { 
         return EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput); 
@@ -298,24 +325,58 @@ private:
 
      void writeDamarisCellDataOutput(data::Solution& localCellData, bool isSubStep)
     {
+        static int firstcall = 0 ;
         if (!isSubStep) {
             // Output the PRESSURE field
-            /*if (this->damarisOutputModule_->getPRESSURE_ptr() != nullptr) {
+            if (this->damarisOutputModule_->getPRESSURE_ptr() != nullptr) {
                 damaris_write("PRESSURE", (void*)this->damarisOutputModule_->getPRESSURE_ptr());
-                damaris_end_iteration();
-            }*/
-            
-            
+               // damaris_end_iteration();
+               
+               // Only call this once, and only when the Damaris data is valid
+               if (firstcall == 0) {
+                   SetGlobalIndexForDamaris() ;
+                    firstcall = 1 ;
+               }
+               
+               damaris_err_ =  damaris_end_iteration();
+               if (damaris_err_ != DAMARIS_OK) {
+                    std::cerr << "ERROR rank =" << rank_ << " : damariswriter::writeDamarisCellDataOutput() : damaris_end_iteration()" 
+                    << ", Damaris error = " <<  damaris_error_string(damaris_err_) << std::endl ;
+               }
+            }
         }
-    
     }
+    
+     void SetGlobalIndexForDamaris () 
+    {
+        // GLOBAL_CELL_INDEX is used to reorder variable data when writing to disk 
+        // This is enabled using select-file="GLOBAL_CELL_INDEX" in the <variable> XML tag
+        if ( this->collectToIORank_.isParallel() ){
+            const std::vector<int>& local_to_global =  this->collectToIORank_.localIdxToGlobalIdxMapping(); 
+            damaris_err_ = damaris_write("GLOBAL_CELL_INDEX", local_to_global.data());
+        } else {
+            std::vector<int> local_to_global_filled ;
+            local_to_global_filled.resize(this->numElements_) ;
+            for (int i = 0 ; i < this->numElements_ ; i++)
+            {
+                local_to_global_filled[i] = i ;
+            }
+            damaris_err_ = damaris_write("GLOBAL_CELL_INDEX", local_to_global_filled.data());
+        }
+        
+        if (damaris_err_ != DAMARIS_OK) {
+            std::cerr << "ERROR rank =" << rank_ << " : eclwrite::writeOutput() : damaris_write(\"GLOBAL_CELL_INDEX\", local_to_global.data())" 
+                  << ", Damaris error = " <<  damaris_error_string(damaris_err_) << std::endl ;
+        }
+    }
+    
+    
     void writeDamarisGridOutput(bool isSubStep)
     {
-        const int rank = simulator_.vanguard().grid().comm().rank() ;
+        // const int rank = simulator_.vanguard().grid().comm().rank() ;
+        
         // N.B. damarisUpdate_ should be set to true if at any time the model geometry changes
         if (this->damarisUpdate_) {
-            int damaris_err ;
-       
             const auto& gridView = simulator_.gridView();
             const auto& interior_elements = elements(gridView, Dune::Partitions::interior);
             // Get the size of the unique vector elements (excludes the shared 'ghost' elements)
@@ -330,7 +391,7 @@ private:
                
                 damaris::model::vertex_data_structure vertex_structure = damaris::model::VERTEX_SEPARATE_X_Y_Z ;  // define this as we know it works with Ascent
                 damaris::model::DamarisGeometryData damarisMeshVars(vertex_structure, geomData.getNVertices(), 
-                                                            geomData.getNCells(), geomData.getNCorners(), rank) ;
+                                                            geomData.getNCells(), geomData.getNCorners(), rank_) ;
                
                 const bool hasPolyCells = geomData.polyhedralCellPresent() ;
                 if ( hasPolyCells ) {
@@ -448,25 +509,7 @@ private:
             }
 
 
-            // GLOBAL_CELL_INDEX is used to reorder variable data when writing to disk 
-            // This is enabled using select-file="GLOBAL_CELL_INDEX" in the <variable> XML tag
-            if ( this->collectToIORank_.isParallel() ){
-                const std::vector<int>& local_to_global =  this->collectToIORank_.localIdxToGlobalIdxMapping(); 
-                damaris_err = damaris_write("GLOBAL_CELL_INDEX", local_to_global.data());
-            } else {
-                std::vector<int> local_to_global_filled ;
-                local_to_global_filled.resize(numElements) ;
-                for (int i = 0 ; i < numElements ; i++)
-                {
-                    local_to_global_filled[i] = i ;
-                }
-                damaris_err = damaris_write("GLOBAL_CELL_INDEX", local_to_global_filled.data());
-            }
-            
-            if (damaris_err != DAMARIS_OK) {
-                std::cerr << "ERROR rank =" << rank << " : eclwrite::writeOutput() : damaris_write(\"GLOBAL_CELL_INDEX\", local_to_global.data())" 
-                      << ", Damaris error = " <<  damaris_error_string(damaris_err) << std::endl ;
-            }
+            //this-SetGlobalIndexForDamaris() ;
               
           
             // Currently by default we assume static grid (unchanging through the simulation)
@@ -475,6 +518,7 @@ private:
         }// end of if (this->damarisUpdate_)
     }
 
+   
 
     void prepareLocalCellData(const bool isSubStep,
                               const int  reportStepNum)
@@ -483,6 +527,7 @@ private:
         if (damarisOutputModule_->localDataValid()) {
             return;
         }
+        std::cout << "INFO: damarisWriter_->prepareLocalCellData()  got past localDataValid() " << std::endl ;
 
         const auto& gridView = simulator_.vanguard().gridView();
         const int numElements = gridView.size(/*codim=*/0);
