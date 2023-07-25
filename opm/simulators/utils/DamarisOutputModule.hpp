@@ -45,6 +45,6 @@ namespace Opm::DamarisOutput
 * N.B. As we are to use the HDF5 select-file attribute, the offsets are only used to write the 
 *      'select-file' data i.e. GLOBAL_CELL_INDEX
 */
- void setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid);
+ void setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid, std::vector<unsigned long long>& elements_rank_offsets);
 
 } // namespace Opm::DamarisOutput
