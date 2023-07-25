@@ -51,11 +51,65 @@ std::string initDamarisXmlFile()
     <parameter name="n_elements_local"     type="int" value="1" />
     <parameter name="n"     type="int" value="1" />
 
-    <layout   name="zonal_layout_usmesh_integer"             type="int" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
-    <variable name="GLOBAL_CELL_INDEX"    layout="zonal_layout_usmesh_integer"     type="scalar"  visualizable="false"  time-varying="false"  centering="zonal" />
-    <layout   name="zonal_layout_usmesh"             type="double" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
-    <variable name="PRESSURE"    layout="zonal_layout_usmesh"     type="scalar"  visualizable="false"     unit="Bar"   centering="zonal" select-file="GLOBAL_CELL_INDEX" store="_MYSTORE_OR_EMPTY_REGEX_"  script="PythonScript" />
+    <layout   name="zonal_layout_usmesh_integer"  type="int"   dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
+    <variable name="GLOBAL_CELL_INDEX"            layout="zonal_layout_usmesh_integer"     type="scalar"  visualizable="false"  time-varying="false"  centering="zonal" />
+    <layout   name="zonal_layout_usmesh"          type="double" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
+    <variable name="PRESSURE"       layout="zonal_layout_usmesh"     type="scalar"  visualizable="true"  mesh="unstructured_mesh"   unit="Bar"   centering="zonal" select-file="GLOBAL_CELL_INDEX" store="_MYSTORE_OR_EMPTY_REGEX_"  script="PythonScript" />
     _MORE_VARIABLES_REGEX_
+    
+    <variable name="MPI_RANK"  layout="zonal_layout_usmesh_integer"   type="scalar"  visualizable="true" mesh="unstructured_mesh" unit="rank"  centering="zonal"  select-file="GLOBAL_CELL_INDEX"  store="#" time-varying="false"  script="#" comment="The cells MPI rank"/>
+    
+    <variable name="KRNSW_GO"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
+    <variable name="KRNSW_OW"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
+    <variable name="KRNSW_GO"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
+    <variable name="PCSWM_GO"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
+    <variable name="PCSWM_OW"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
+    <variable name="PPCW"      layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit="Bar"  centering="zonal"  time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
+    <variable name="PRESSURE"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit="Bar"  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX" store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
+    <variable name="RS"        layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit="Bar"  centering="zonal"  time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" comment="Dissolved Gas units Gas Oil Ratio" />
+    <variable name="RV"        layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit="Bar"  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX" store="_MYSTORE_OR_EMPTY_REGEX_"  script="PythonScript" />
+    <variable name="SOMAX"     layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""     centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX" store="#"  script="#" />
+    <variable name="1OVERBG"   layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="1OVERBO"   layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="1OVERBW"   layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="GASKR"     layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="GAS_DEN"   layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="GAS_VISC"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="OILKR"     layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="OIL_DEN"   layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="OIL_VISC"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="WATKR"     layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="WAT_DEN"   layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+    <variable name="WAT_VISC"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />
+
+    
+    
+    <variable name="2FBF"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"   time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="4FBF"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="DFBF"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="GCDI"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="GCDM"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="GIP"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"   time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />      
+    <variable name="GIPG"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="GIPL"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"   time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="GIPR"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="HTOF"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="OIP"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"   time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />      
+    <variable name="OIPG"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="OIPL"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="OIPR"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="RPV"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"   time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />      
+    <variable name="S36F"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="SEAF"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="SGAS"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="SIP"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />      
+    <variable name="SWAT"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="TFBF"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="WCD"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />      
+    <variable name="WIP"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"   time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />      
+    <variable name="WIPG"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="WIPL"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
+    <variable name="WIPR"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="#"  unit=""  centering="zonal"  time-varying="true"  select-file="GLOBAL_CELL_INDEX"  store="#"  script="#" />     
     
     
     <parameter name="n_coords_local"     type="int" value="1" />
@@ -73,26 +127,26 @@ std::string initDamarisXmlFile()
     <layout    name="n_offsets_layout_ph"      type="int"  dimensions="n_offsets_types_ph"  comment="Layout for the offsets_ph"  />
     <layout    name="n_types_layout_ph"        type="char" dimensions="n_offsets_types_ph"  comment="Layout for the types_ph "  />
     <group name="topologies/topo/elements">
-        <variable name="connectivity" layout="n_connections_layout_ph"  type="scalar"  visualizable="false"    script="PythonScript" time-varying="false" />
-        <variable name="offsets"      layout="n_offsets_layout_ph"    type="scalar"  visualizable="false"     script="PythonScript" time-varying="false" />
-        <variable name="types"        layout="n_types_layout_ph"    type="scalar"  visualizable="false"    script="PythonScript" time-varying="false" />
+        <variable name="connectivity"  layout="n_connections_layout_ph"  type="scalar"  visualizable="false"  script="PythonScript" time-varying="false" />
+        <variable name="offsets"       layout="n_offsets_layout_ph"      type="scalar"  visualizable="false"  script="PythonScript" time-varying="false" />
+        <variable name="types"         layout="n_types_layout_ph"        type="scalar"  visualizable="false"  script="PythonScript" time-varying="false" />
     </group>
     
     
     <mesh name="unstructured_mesh" type="unstructured" topology="3" time-varying="false" 
-               comment="This Mesh definition is for connection with Paraview.
-                        This definition only references the actual variables that define an unstructured mesh available above.
-                        Current issues: 
-                          1. x,y,z vertex coordinates are separate - need to test if 3 individual arrays works;
-                          2. GID is not defined for ASCENT data above; 
-                          3. Paraview is expecting sizes and not offsets" >
-          <coord                name="coordset/coords/values/x"  unit="m"    />
-          <coord                name="coordset/coords/values/y"  unit="m"    />
-          <coord                name="coordset/coords/values/z"  unit="m"    />
-          <vertex_global_id     name=""                          offset="-1" />
-          <section_types        name="topologies/topo/elements/types"        />
-          <section_sizes        name="topologies/topo/elements/offsets"      />
-          <section_connectivity name="topologies/topo/elements/connectivity" />
+             comment="This Mesh definition is for connection with Paraview.
+                      This definition references the variables that define an unstructured mesh specified above." >
+        <coord                name="coordset/coords/values/x"  unit="m"    />
+        <coord                name="coordset/coords/values/y"  unit="m"    />
+        <coord                name="coordset/coords/values/z"  unit="m"    />
+        <vertex_global_id     name="#"                         offset="0"  />
+        <element_offsets      name="topologies/topo/elements/offsets"      />
+        <section_types        name="topologies/topo/elements/types"        />
+        <section_sizes        name="#"                                     />
+        <section_connectivity name="topologies/topo/elements/connectivity" />
+        <polyhedral_cell_faces_connectivity  name="#"                      /> 
+        <polyhedral_cell_faces_offsets       name="#"                      />
+        <polyhedral_n_faces_per_cell         name="#"                      />
     </mesh>
     
 </data>
@@ -109,8 +163,8 @@ std::string initDamarisXmlFile()
     <pyscript name="PythonScript" file="opm_python_script.py" language="python" frequency="1" scheduler-file="" nthreads="0" keep-workers="no" />
 </scripts>
 
-<paraview update-frequency="1" >
-        <script>paraview_script.py</script>
+<paraview update-frequency="1" write-vtk="0" write-vtk-binary="false">
+        <script>damaris_slice_xy_csv_opmflow.py</script>
 </paraview>
 
 <actions>
