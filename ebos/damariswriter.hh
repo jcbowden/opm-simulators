@@ -170,36 +170,8 @@ public:
     }
 
     /*!
-     * \brief collect and pass data and pass it to eclIO writer
+     * \brief Writes localCellData through to Damaris servers. Sets up the unstructured mesh which is passed to Damaris.
      */
-   /* void evalSummaryState(bool isSubStep)
-    {
-        OPM_TIMEBLOCK(evalSummaryState);
-        const int reportStepNum = simulator_.episodeIndex() + 1;
-       
-        if (reportStepNum == 0)
-            return;
-
-        const Scalar curTime = simulator_.time() + simulator_.timeStepSize();
-        const Scalar totalCpuTime =
-            simulator_.executionTimer().realTimeElapsed() +
-            simulator_.setupTimer().realTimeElapsed() +
-            simulator_.vanguard().setupTime();
-
-        const auto localWellData            = simulator_.problem().wellModel().wellData();
-        const auto localGroupAndNetworkData = simulator_.problem().wellModel()
-            .groupAndNetworkData(reportStepNum);
-
-        const auto localAquiferData = simulator_.problem().aquiferModel().aquiferData();
-        const auto localWellTestState = simulator_.problem().wellModel().wellTestState();
-        this->prepareLocalCellData(isSubStep, reportStepNum);
-
-        if (this->damarisOutputModule_->needInterfaceFluxes(isSubStep)) {
-            this->captureLocalFluxData();
-        }
-
-    }*/
-
     void writeOutput(data::Solution& localCellData , bool isSubStep)
     {
         OPM_TIMEBLOCK(writeOutput);
@@ -246,6 +218,8 @@ public:
             }
             
             // Call damaris_set_position() for all available variables
+            // There is an assumption that all variables are the same size and that they are all double precision float 
+            // see initDamarisTemplateXmlFile.cpp for the Damaris XML descriptions.
             for ( auto damVar : localCellData ) {
                 // std::map<std::string, data::CellData>
                 const std::string name = damVar.first ;
@@ -562,44 +536,6 @@ private:
         OPM_END_PARALLEL_TRY_CATCH("DamarisWriter::prepareLocalCellData() failed: ", simulator_.vanguard().grid().comm());
     }
 
-/*
-    void captureLocalFluxData()
-    {
-        OPM_TIMEBLOCK(captureLocalData);
-        const auto& gridView = this->simulator_.vanguard().gridView();
-        const auto timeIdx = 0u;
-
-        auto elemCtx = ElementContext { this->simulator_ };
-
-        const auto elemMapper = ElementMapper { gridView, Dune::mcmgElementLayout() };
-        const auto activeIndex = [&elemMapper](const Element& e)
-        {
-            return elemMapper.index(e);
-        };
-
-        const auto cartesianIndex = [this](const int elemIndex)
-        {
-            return this->cartMapper_.cartesianIndex(elemIndex);
-        };
-
-        this->damarisOutputModule_->initializeFluxData();
-
-        OPM_BEGIN_PARALLEL_TRY_CATCH();
-
-        for (const auto& elem : elements(gridView, Dune::Partitions::interiorBorder)) {
-            elemCtx.updateStencil(elem);
-            elemCtx.updateIntensiveQuantities(timeIdx);
-            elemCtx.updateExtensiveQuantities(timeIdx);
-
-            this->damarisOutputModule_->processFluxes(elemCtx, activeIndex, cartesianIndex);
-        }
-
-        OPM_END_PARALLEL_TRY_CATCH("DamarisWriter::captureLocalFluxData() failed: ",
-                                   this->simulator_.vanguard().grid().comm())
-
-        this->damarisOutputModule_->finalizeFluxData();
-    }*/
-    
 
     Simulator& simulator_;
     std::unique_ptr<EclOutputBlackOilModule<TypeTag>> damarisOutputModule_;
