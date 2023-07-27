@@ -1,6 +1,6 @@
 /*
   Copyright 2022 SINTEF Digital, Mathematics and Cybernetics.
-
+  Copyright 2023 Inria
   This file is part of the Open Porous Media project (OPM).
 
   OPM is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@
 namespace Opm::DamarisOutput
 {
 
-std::string initDamarisXmlFile(); // Defined in initDamarisXMLFile.cpp, to avoid messing up this file.
+std::string initDamarisTemplateXmlFile(); // Defined in initDamarisXMLFile.cpp, to avoid messing up this file.
 
 
 void
@@ -42,7 +42,7 @@ initializeDamaris(MPI_Comm comm, int mpiRank, std::string outputDir, bool enable
         outputDir = ".";
     }
     // Prepare the XML file
-    std::string damaris_config_xml = initDamarisXmlFile();
+    std::string damaris_config_xml = initDamarisTemplateXmlFile();
     damaris::model::ModifyModel myMod = damaris::model::ModifyModel(damaris_config_xml);
     // The map will make it precise the output directory and FileMode (either FilePerCore or Collective storage)
     // The map file find all occurences of the string in position 1 and repalce it/them with string in position 2
@@ -75,8 +75,10 @@ initializeDamaris(MPI_Comm comm, int mpiRank, std::string outputDir, bool enable
     }
 }
 
+
+
 void
-setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid)
+setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid, std::vector<unsigned long long>& elements_rank_offsets)
 {
     int damaris_err = DAMARIS_OK;
 
@@ -84,7 +86,7 @@ setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local
     const int rank = comm.rank();
 
     std::vector<unsigned long long> elements_rank_sizes(nranks); // one for each rank -- to be gathered from each client rank
-    std::vector<unsigned long long> elements_rank_offsets(nranks); // one for each rank, first one 0 -- to be computed - Probably could use MPI_Scan()!
+    // std::vector<unsigned long long> elements_rank_offsets(nranks); // one for each rank, first one 0 -- to be computed - Probably could use MPI_Scan()!
 
     // n_elements_local_grid should be the full model size
     const unsigned long long n_elements_local = n_elements_local_grid;
@@ -132,15 +134,20 @@ setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local
     // This is used so that output functionality (e.g. HDF5Store) knows global offsets of the data of the ranks
     int64_t temp_int64_t[1];
     temp_int64_t[0] = static_cast<int64_t>(elements_rank_offsets[rank]);
-    damaris_err = damaris_set_position("PRESSURE", temp_int64_t);
+    /*damaris_err = damaris_set_position("PRESSURE", temp_int64_t);
     if (damaris_err != DAMARIS_OK && rank == 0) {
         OpmLog::error("Damaris library produced an error result for "
                       "damaris_set_position(\"PRESSURE\", temp_int64_t);");
-    }
+    }*/
     damaris_err = damaris_set_position("GLOBAL_CELL_INDEX", temp_int64_t);
     if (damaris_err != DAMARIS_OK && rank == 0) {
         OpmLog::error("Damaris library produced an error result for "
                       "damaris_set_position(\"GLOBAL_CELL_INDEX\", temp_int64_t);");
+    }
+    damaris_err = damaris_set_position("MPI_RANK", temp_int64_t);
+    if (damaris_err != DAMARIS_OK && rank == 0) {
+        OpmLog::error("Damaris library produced an error result for "
+                      "damaris_set_position(\"PRESSURE\", temp_int64_t);");
     }
 }
 } // namespace Opm::DamarisOutput
