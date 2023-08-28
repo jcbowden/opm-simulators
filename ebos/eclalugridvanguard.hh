@@ -27,18 +27,27 @@
 #ifndef EWOMS_ECL_ALU_GRID_VANGUARD_HH
 #define EWOMS_ECL_ALU_GRID_VANGUARD_HH
 
-#include "eclbasevanguard.hh"
-#include "ecltransmissibility.hh"
-#include "alucartesianindexmapper.hh"
-#include <opm/models/common/multiphasebaseproperties.hh>
+#include <dune/alugrid/common/fromtogridfactory.hh>
+#include <dune/alugrid/dgf.hh>
+#include <dune/alugrid/grid.hh>
+
+#include <ebos/alucartesianindexmapper.hh>
+#include <ebos/eclbasevanguard.hh>
+#include <ebos/ecltransmissibility.hh>
 
 #include <opm/common/OpmLog/OpmLog.hpp>
 
-#include <dune/alugrid/grid.hh>
-#include <dune/alugrid/common/fromtogridfactory.hh>
-#include <dune/alugrid/dgf.hh>
 #include <opm/grid/CpGrid.hpp>
+
+#include <opm/models/common/multiphasebaseproperties.hh>
+
 #include <opm/simulators/utils/ParallelEclipseState.hpp>
+
+#include <array>
+#include <cstddef>
+#include <memory>
+#include <tuple>
+#include <vector>
 
 namespace Opm {
 template <class TypeTag>
@@ -104,7 +113,7 @@ public:
 
     static constexpr int dimension = Grid::dimension;
     static constexpr int dimensionworld = Grid::dimensionworld;
-public:
+
     EclAluGridVanguard(Simulator& simulator)
         : EclBaseVanguard<TypeTag>(simulator)
     { 
@@ -323,7 +332,7 @@ protected:
         grid_ = factory_->convert(*equilGrid_, cartesianCellId_, ordering_);
         OpmLog::warning("Space Filling Curve Ordering is not yet supported: DISABLE_ALUGRID_SFC_ORDERING is enabled");
         equilGridToGrid_.resize(ordering_.size());
-        for (size_t index = 0; index<ordering_.size(); ++index) {
+        for (std::size_t index = 0; index < ordering_.size(); ++index) {
             equilGridToGrid_[ordering_[index]] = index;
         }
 

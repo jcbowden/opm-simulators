@@ -27,12 +27,18 @@
 #ifndef EWOMS_ECL_POLYHEDRAL_GRID_VANGUARD_HH
 #define EWOMS_ECL_POLYHEDRAL_GRID_VANGUARD_HH
 
-#include <opm/models/common/multiphasebaseproperties.hh>
-
-#include "eclbasevanguard.hh"
-#include "ecltransmissibility.hh"
+#include <ebos/eclbasevanguard.hh>
+#include <ebos/ecltransmissibility.hh>
 
 #include <opm/grid/polyhedralgrid.hh>
+
+#include <opm/models/common/multiphasebaseproperties.hh>
+
+#include <array>
+#include <functional>
+#include <string>
+#include <tuple>
+#include <unordered_set>
 
 namespace Opm {
 template <class TypeTag>
@@ -86,25 +92,35 @@ public:
     using Grid = GetPropType<TypeTag, Properties::Grid>;
     using EquilGrid = GetPropType<TypeTag, Properties::EquilGrid>;
     using GridView = GetPropType<TypeTag, Properties::GridView>;
-    using TransmissibilityType = EclTransmissibility<Grid, GridView, ElementMapper, Scalar>;
+    using CartesianIndexMapper = Dune::CartesianIndexMapper<Grid>;
+    using EquilCartesianIndexMapper = Dune::CartesianIndexMapper<EquilGrid>;
+    static constexpr int dimension = Grid::dimension;
+    static constexpr int dimensionworld = Grid::dimensionworld;
 
 private:
     using GridPointer = Grid*;
     using EquilGridPointer = EquilGrid*;
-    using CartesianIndexMapper = Dune::CartesianIndexMapper<Grid>;
-    using CartesianIndexMapperPointer = std::unique_ptr<CartesianIndexMapper>;
 
 public:
+    using TransmissibilityType = EclTransmissibility<Grid, GridView, ElementMapper,
+                                                     CartesianIndexMapper, Scalar>;
+
     EclPolyhedralGridVanguard(Simulator& simulator)
         : EclBaseVanguard<TypeTag>(simulator),
           simulator_( simulator )
     {
         this->callImplementationInit();
+        // add a copy in standard vector format to fullfill new interface
+        const int* globalcellorg = this->grid().globalCell();
+        int num_cells = this->gridView().size(0);
+        globalcell_.resize(num_cells);
+        for(int i=0; i < num_cells; ++i){
+            globalcell_[i] = globalcellorg[i];
+        }
     }
 
     ~EclPolyhedralGridVanguard()
     {
-        delete grid_;
     }
 
     /*!
@@ -147,7 +163,8 @@ public:
      * (For parallel simulation runs.)
      */
     void loadBalance()
-    { /* do nothing: PolyhedralGrid is not parallel! */ }
+    { /* do nothing: PolyhedralGrid is not parallel! */
+    }
 
     /*!
      * \brief Returns the object which maps a global element index of the simulation grid
@@ -165,6 +182,18 @@ public:
     const CartesianIndexMapper& equilCartesianIndexMapper() const
     { return *cartesianIndexMapper_; }
 
+    const std::vector<int>& globalCell()
+    {
+        return globalcell_;
+    }
+
+    unsigned int gridEquilIdxToGridIdx(unsigned int elemIndex) const {
+         return elemIndex;
+    }
+
+    unsigned int gridIdxToEquilGridIdx(unsigned int elemIndex) const {
+        return elemIndex;
+    }
 
     /*!
      * \brief Free the memory occupied by the global transmissibility object.
@@ -190,17 +219,23 @@ public:
      * It is a function return the centroid for the given element
      * index.
      */
-    std::function<std::array<double,dimensionworld>(int)>
+    std::function<std::array<double,EclBaseVanguard<TypeTag>::dimensionworld>(int)>
     cellCentroids() const
     {
         return this->cellCentroids_(this->cartesianIndexMapper());
     }
 
+    std::vector<int> cellPartition() const
+    {
+        // not required for this type of grid yet (only from bdaBridge??)
+        return {};
+    }
 protected:
     void createGrids_()
     {
-        grid_ = new Grid(this->eclState().getInputGrid(), this->eclState().fieldProps().porv(true));
+        grid_ = std::make_unique<Grid>(this->eclState().getInputGrid(), this->eclState().fieldProps().porv(true));
         cartesianIndexMapper_ = std::make_unique<CartesianIndexMapper>(*grid_);
+        this->updateGridView_();
         this->updateCartesianToCompressedMapping_();
         this->updateCellDepths_();
     }
@@ -212,10 +247,12 @@ protected:
 
     Simulator& simulator_;
 
-    GridPointer grid_;
-    CartesianIndexMapperPointer cartesianIndexMapper_;
+    std::unique_ptr<Grid> grid_;
+    std::unique_ptr<CartesianIndexMapper> cartesianIndexMapper_;
+    //CartesianIndexMapperPointer cartesianIndexMapper_;
 
     std::unordered_set<std::string> defunctWellNames_;
+    std::vector<int> globalcell_;
 };
 
 } // namespace Opm

@@ -25,7 +25,7 @@
 
 #include <opm/simulators/utils/ParallelCommunication.hpp>
 #include <opm/simulators/wells/WellHelpers.hpp>
-
+#include <opm/common/TimingMacros.hpp>
 #include <dune/common/dynmatrix.hh>
 #include <dune/common/dynvector.hh>
 #include <dune/istl/bcrsmatrix.hh>
@@ -36,7 +36,9 @@ namespace Opm
 
 class ParallelWellInfo;
 template<class Scalar, int numEq> class StandardWellEquationAccess;
+#if COMPILE_BDA_BRIDGE
 class WellContributions;
+#endif
 class WellInterfaceGeneric;
 class WellState;
 
@@ -94,9 +96,11 @@ public:
     //! \details xw = inv(D)*(rw - C*x)
     void recoverSolutionWell(const BVector& x, BVectorWell& xw) const;
 
+#if COMPILE_BDA_BRIDGE
     //! \brief Add the matrices of this well to the WellContributions object.
     void extract(const int numStaticWellEq,
                  WellContributions& wellContribs) const;
+#endif
 
     //! \brief Add the matrices of this well to the sparse matrix adapter.
     template<class SparseMatrixAdapter>

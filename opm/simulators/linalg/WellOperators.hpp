@@ -22,8 +22,15 @@
 #ifndef OPM_WELLOPERATORS_HEADER_INCLUDED
 #define OPM_WELLOPERATORS_HEADER_INCLUDED
 
+#include <dune/common/parallel/communication.hh>
 #include <dune/istl/operators.hh>
+#include <dune/istl/bcrsmatrix.hh>
+
+#include <opm/common/TimingMacros.hpp>
+
 #include <opm/simulators/linalg/matrixblock.hh>
+
+#include <cstddef>
 
 namespace Opm
 {
@@ -72,12 +79,14 @@ public:
      */
     void apply(const X& x, Y& y) const override
     {
+        OPM_TIMEBLOCK(apply);
         wellMod_.apply(x, y);
     }
 
     //! apply operator to x, scale and add:  \f$ y = y + \alpha A(x) \f$
     virtual void applyscaleadd(field_type alpha, const X& x, Y& y) const override
     {
+        OPM_TIMEBLOCK(applyscaleadd);
         wellMod_.applyScaleAdd(alpha, x, y);
     }
 
@@ -92,10 +101,12 @@ public:
     }
     void addWellPressureEquations(PressureMatrix& jacobian, const X& weights,const bool use_well_weights) const override
     {
+        OPM_TIMEBLOCK(addWellPressureEquations);
         wellMod_.addWellPressureEquations(jacobian, weights, use_well_weights);
     }
     void addWellPressureEquationsStruct(PressureMatrix& jacobian) const override
     {
+        OPM_TIMEBLOCK(addWellPressureEquationsStruct);
         wellMod_.addWellPressureEquationsStruct(jacobian);
     }
     int getNumberOfExtraEquations() const override
@@ -149,6 +160,7 @@ public:
 
   virtual void apply( const X& x, Y& y ) const override
   {
+    OPM_TIMEBLOCK(apply);
     A_.mv( x, y );
 
     // add well model modification to y
@@ -163,6 +175,7 @@ public:
   // y += \alpha * A * x
   virtual void applyscaleadd (field_type alpha, const X& x, Y& y) const override
   {
+    OPM_TIMEBLOCK(applyscaleadd);
     A_.usmv(alpha,x,y);
 
     // add scaled well model modification to y
@@ -178,10 +191,12 @@ public:
 
     void addWellPressureEquations(PressureMatrix& jacobian, const X& weights,const bool use_well_weights) const
     {
+        OPM_TIMEBLOCK(addWellPressureEquations);
         wellOper_.addWellPressureEquations(jacobian, weights, use_well_weights);
     }
     void addWellPressureEquationsStruct(PressureMatrix& jacobian) const
     {
+        OPM_TIMEBLOCK(addWellPressureEquations);
         wellOper_.addWellPressureEquationsStruct(jacobian);
     }
     int getNumberOfExtraEquations() const
@@ -229,12 +244,13 @@ public:
     //! constructor: just store a reference to a matrix
     WellModelGhostLastMatrixAdapter (const M& A,
                                      const Opm::LinearOperatorExtra<X, Y>& wellOper,
-                                     const size_t interiorSize )
+                                     const std::size_t interiorSize )
         : A_( A ), wellOper_( wellOper ), interiorSize_(interiorSize)
     {}
 
     virtual void apply( const X& x, Y& y ) const override
     {
+        OPM_TIMEBLOCK(apply);
         for (auto row = A_.begin(); row.index() < interiorSize_; ++row)
         {
             y[row.index()]=0;
@@ -252,6 +268,7 @@ public:
     // y += \alpha * A * x
     virtual void applyscaleadd (field_type alpha, const X& x, Y& y) const override
     {
+        OPM_TIMEBLOCK(applyscaleadd);
         for (auto row = A_.begin(); row.index() < interiorSize_; ++row)
         {
             auto endc = (*row).end();
@@ -268,10 +285,12 @@ public:
 
     void addWellPressureEquations(PressureMatrix& jacobian, const X& weights,const bool use_well_weights) const
     {
+        OPM_TIMEBLOCK(addWellPressureEquations);
         wellOper_.addWellPressureEquations(jacobian, weights, use_well_weights);
     }
     void addWellPressureEquationsStruct(PressureMatrix& jacobian) const
     {
+        OPM_TIMEBLOCK(addWellPressureEquationsStruct);
         wellOper_.addWellPressureEquationsStruct(jacobian);
     }
     int getNumberOfExtraEquations() const
@@ -282,14 +301,14 @@ public:
 protected:
     void ghostLastProject(Y& y) const
     {
-        size_t end = y.size();
-        for (size_t i = interiorSize_; i < end; ++i)
+        std::size_t end = y.size();
+        for (std::size_t i = interiorSize_; i < end; ++i)
             y[i] = 0;
     }
 
     const matrix_type& A_ ;
     const Opm::LinearOperatorExtra< X, Y>& wellOper_;
-    size_t interiorSize_;
+    std::size_t interiorSize_;
 };
 
 } // namespace Opm

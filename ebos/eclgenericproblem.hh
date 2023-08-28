@@ -28,10 +28,15 @@
 #ifndef EWOMS_GENERIC_ECL_PROBLEM_HH
 #define EWOMS_GENERIC_ECL_PROBLEM_HH
 
+#include <ebos/eclmixingratecontrols.hh>
+#include <ebos/eclsolutioncontainers.hh>
+
 #include <opm/material/common/UniformXTabulated2DFunction.hpp>
 #include <opm/material/common/Tabulated1DFunction.hpp>
 
 #include <array>
+#include <cstddef>
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -258,22 +263,9 @@ public:
      */
     Scalar porosity(unsigned globalSpaceIdx, unsigned timeIdx) const;
 
-    /*!
-     * \brief Returns the minimum allowable size of a time step.
-     */
-    Scalar minTimeStepSize() const
-    { return minTimeStepSize_; }
-
-    /*!
-     * \brief Returns the maximum number of subsequent failures for the time integration
-     *        before giving up.
-     */
-    unsigned maxTimeIntegrationFailures() const
-    { return maxFails_; }
-
     bool vapparsActive(int episodeIdx) const;
-    
-    int numPressurePointsEquil() const 
+
+    int numPressurePointsEquil() const
     { return numPressurePointsEquil_; }
 
     bool operator==(const EclGenericProblem& rhs) const;
@@ -282,34 +274,17 @@ public:
     void serializeOp(Serializer& serializer)
     {
         serializer(maxOilSaturation_);
-        serializer(maxPolymerAdsorption_);
+        serializer(polymer_);
         serializer(maxWaterSaturation_);
         serializer(minOilPressure_);
         serializer(overburdenPressure_);
-        serializer(polymerConcentration_);
-        serializer(polymerMoleWeight_);
         serializer(solventSaturation_);
-        serializer(microbialConcentration_);
-        serializer(oxygenConcentration_);
-        serializer(ureaConcentration_);
-        serializer(biofilmConcentration_);
-        serializer(calciteConcentration_);
-        serializer(lastRv_);
-        serializer(maxDRv_);
-        serializer(convectiveDrs_);
-        serializer(lastRs_);
-        serializer(maxDRs_);
-        serializer(dRsDtOnlyFreeGas_);
+        serializer(micp_);
+        serializer(mixControls_);
     }
 
 protected:
-    bool drsdtActive_(int episodeIdx) const;
-    bool drvdtActive_(int episodeIdx) const;
-    bool drsdtConvective_(int episodeIdx) const;
-
     void initFluidSystem_();
-    void initDRSDT_(size_t numDof,
-                    int episodeIdx);
 
     /*!
      * \brief Always returns true. The ecl output writer takes care of the rest
@@ -336,10 +311,11 @@ protected:
                         Scalar timeStepSize,
                         Scalar endTime);
 
-    void readRockParameters_(const std::vector<Scalar>& cellCenterDepths);
+    void readRockParameters_(const std::vector<Scalar>& cellCenterDepths,
+                             std::function<std::array<int,3>(const unsigned)> ijkIndex);
     void readRockCompactionParameters_();
 
-    void readBlackoilExtentionsInitialConditions_(size_t numDof,
+    void readBlackoilExtentionsInitialConditions_(std::size_t numDof,
                                                   bool enableSolvent,
                                                   bool enablePolymer,
                                                   bool enablePolymerMolarWeight,
@@ -377,43 +353,27 @@ protected:
     std::vector<TabulatedFunction> rockCompPoroMult_;
     std::vector<TabulatedFunction> rockCompTransMult_;
 
+    PolymerSolutionContainer<Scalar> polymer_;
     std::vector<Scalar> maxOilSaturation_;
-    std::vector<Scalar> maxPolymerAdsorption_;
     std::vector<Scalar> maxWaterSaturation_;
     std::vector<Scalar> minOilPressure_;
     std::vector<Scalar> overburdenPressure_;
-    std::vector<Scalar> polymerConcentration_;
-    std::vector<Scalar> polymerMoleWeight_; // polymer molecular weight
     std::vector<Scalar> solventSaturation_;
-    std::vector<Scalar> microbialConcentration_;
-    std::vector<Scalar> oxygenConcentration_;
-    std::vector<Scalar> ureaConcentration_;
-    std::vector<Scalar> biofilmConcentration_;
-    std::vector<Scalar> calciteConcentration_;
+    MICPSolutionContainer<Scalar> micp_;
 
-    std::vector<Scalar> lastRv_;
-    std::vector<Scalar> maxDRv_;
-
-    std::vector<Scalar> convectiveDrs_;
-    std::vector<Scalar> lastRs_;
-    std::vector<Scalar> maxDRs_;
-    std::vector<bool> dRsDtOnlyFreeGas_; // apply the DRSDT rate limit only to cells that exhibit free gas
+    EclMixingRateControls<FluidSystem, Scalar> mixControls_;
 
     // time stepping parameters
     bool enableTuning_;
     Scalar initialTimeStepSize_;
     Scalar maxTimeStepAfterWellEvent_;
-    Scalar maxTimeStepSize_;
-    Scalar restartShrinkFactor_;
-    unsigned maxFails_;
-    Scalar minTimeStepSize_;
     
     // equilibration parameters
     int numPressurePointsEquil_;
 
 private:
     template<class T>
-    void updateNum(const std::string& name, std::vector<T>& numbers, size_t num_regions);
+    void updateNum(const std::string& name, std::vector<T>& numbers, std::size_t num_regions);
 };
 
 } // namespace Opm

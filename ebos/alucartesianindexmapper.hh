@@ -28,19 +28,18 @@
 #ifndef EWOMS_ALU_CARTESIAN_INDEX_MAPPER_HH
 #define EWOMS_ALU_CARTESIAN_INDEX_MAPPER_HH
 
-#include <dune/grid/common/datahandleif.hh>
-#include <dune/grid/utility/persistentcontainer.hh>
-#if HAVE_DUNE_ALUGRID
 #include <dune/alugrid/grid.hh>
 #include <dune/alugrid/3d/gridview.hh>
-#endif // HAVE_DUNE_ALUGRID
 #include <opm/grid/common/CartesianIndexMapper.hpp>
+#include <dune/grid/common/datahandleif.hh>
+#include <dune/grid/utility/persistentcontainer.hh>
 
 #include <array>
-#include <memory>
-#include <exception>
-#include <vector>
 #include <cassert>
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <vector>
 
 namespace Dune {
 
@@ -124,7 +123,7 @@ public:
         //! \brief loop over all internal data handlers and call scatter for
         //! given entity
         template<class MessageBufferImp, class EntityType>
-        void scatter(MessageBufferImp& buff, const EntityType& element, size_t /* n */)
+        void scatter(MessageBufferImp& buff, const EntityType& element, std::size_t /* n */)
         {
             int globalIdx = -1;
             buff.read(globalIdx);
@@ -138,7 +137,7 @@ public:
         //! \brief loop over all internal data handlers and return sum of data
         //! size of given entity
         template<class EntityType>
-        size_t size(const EntityType& /* en */) const
+        std::size_t size(const EntityType& /* en */) const
         { return 1; }
 
     protected:

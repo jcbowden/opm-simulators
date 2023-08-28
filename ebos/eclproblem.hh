@@ -28,46 +28,38 @@
 #ifndef EWOMS_ECL_PROBLEM_HH
 #define EWOMS_ECL_PROBLEM_HH
 
-#if USE_ALUGRID
-#define DISABLE_ALUGRID_SFC_ORDERING 1
-#include "eclalugridvanguard.hh"
-#elif USE_POLYHEDRALGRID
-#include "eclpolyhedralgridvanguard.hh"
-#else
-#include "eclcpgridvanguard.hh"
-#endif
+#include <dune/common/version.hh>
+#include <dune/common/fvector.hh>
+#include <dune/common/fmatrix.hh>
 
-#include "eclactionhandler.hh"
-#include "eclequilinitializer.hh"
-#include "eclwriter.hh"
-#include "damariswriter.hh"
-#include "ecloutputblackoilmodule.hh"
-#include "ecltransmissibility.hh"
-#include "eclthresholdpressure.hh"
-#include "ecldummygradientcalculator.hh"
-#include "eclfluxmodule.hh"
-#include "eclbaseaquifermodel.hh"
-#include "eclnewtonmethod.hh"
-#include "ecltracermodel.hh"
-#include "vtkecltracermodule.hh"
-#include "eclgenericproblem.hh"
-#include "FIBlackOilModel.hpp"
+#include <ebos/eclbaseaquifermodel.hh>
+#include <ebos/eclcpgridvanguard.hh>
+#include <ebos/ecldummygradientcalculator.hh>
+#include <ebos/eclequilinitializer.hh>
+#include <ebos/eclfluxmodule.hh>
+#include <ebos/eclgenericproblem.hh>
+#include <ebos/eclnewtonmethod.hh>
+#include <ebos/ecloutputblackoilmodule.hh>
+#include <ebos/eclproblem_properties.hh>
+#include <ebos/eclthresholdpressure.hh>
+#include <ebos/ecltransmissibility.hh>
+#include <ebos/eclwriter.hh>
+#include <ebos/ecltracermodel.hh>
+#include <ebos/FIBlackOilModel.hpp>
+#include <ebos/vtkecltracermodule.hh>
+
+#include <opm/common/utility/TimeService.hpp>
 
 #include <opm/core/props/satfunc/RelpermDiagnostics.hpp>
 
-#include <opm/simulators/utils/DeferredLoggingErrorHelpers.hpp>
-#include <opm/simulators/utils/ParallelSerialization.hpp>
-#include <opm/simulators/timestepping/SimulatorReport.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/Parser/ParserKeywords/E.hpp>
+#include <opm/input/eclipse/Schedule/Schedule.hpp>
 
-#include <opm/models/common/directionalmobility.hh>
-#include <opm/models/utils/pffgridvector.hh>
-#include <opm/models/blackoil/blackoilmodel.hh>
-#include <opm/models/discretization/ecfv/ecfvdiscretization.hh>
-
-#include <opm/material/fluidmatrixinteractions/EclMaterialLawManager.hpp>
-#include <opm/material/thermal/EclThermalLawManager.hpp>
+#include <opm/material/common/ConditionalStorage.hpp>
+#include <opm/material/common/Valgrind.hpp>
 #include <opm/material/densead/Evaluation.hpp>
-
+#include <opm/material/fluidmatrixinteractions/EclMaterialLawManager.hpp>
 #include <opm/material/fluidstates/CompositionalFluidState.hpp>
 #include <opm/material/fluidsystems/BlackOilFluidSystem.hpp>
 #include <opm/material/fluidsystems/blackoilpvt/DryGasPvt.hpp>
@@ -76,536 +68,30 @@
 #include <opm/material/fluidsystems/blackoilpvt/DeadOilPvt.hpp>
 #include <opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityOilPvt.hpp>
 #include <opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityWaterPvt.hpp>
+#include <opm/material/thermal/EclThermalLawManager.hpp>
 
-#include <opm/material/common/Valgrind.hpp>
-#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/input/eclipse/Schedule/Schedule.hpp>
-#include <opm/common/utility/TimeService.hpp>
-#include <opm/utility/CopyablePtr.hpp>
-#include <opm/material/common/ConditionalStorage.hpp>
-
-#include <dune/common/version.hh>
-#include <dune/common/fvector.hh>
-#include <dune/common/fmatrix.hh>
+#include <opm/models/common/directionalmobility.hh>
+#include <opm/models/utils/pffgridvector.hh>
+#include <opm/models/blackoil/blackoilmodel.hh>
+#include <opm/models/discretization/ecfv/ecfvdiscretization.hh>
 
 #include <opm/output/eclipse/EclipseIO.hpp>
 
+#include <opm/simulators/flow/EclActionHandler.hpp>
+#include <opm/simulators/timestepping/AdaptiveTimeSteppingEbos.hpp>
+#include <opm/simulators/timestepping/SimulatorReport.hpp>
+#include <opm/simulators/utils/DeferredLoggingErrorHelpers.hpp>
+#include <opm/simulators/utils/ParallelSerialization.hpp>
+
+#include <opm/utility/CopyablePtr.hpp>
+
 #include <opm/common/OpmLog/OpmLog.hpp>
 
-#include <opm/input/eclipse/Parser/ParserKeywords/E.hpp>
-
-#include <set>
-#include <vector>
-#include <string>
 #include <algorithm>
 #include <functional>
-
-namespace Opm {
-template <class TypeTag>
-class EclProblem;
-}
-
-namespace Opm::Properties {
-
-namespace TTag {
-
-#if USE_ALUGRID
-struct EclBaseProblem {
-  using InheritsFrom = std::tuple<VtkEclTracer, EclOutputBlackOil, EclAluGridVanguard>;
-};
-#elif USE_POLYHEDRALGRID
-struct EclBaseProblem {
-  using InheritsFrom = std::tuple<VtkEclTracer, EclOutputBlackOil, EclPolyhedralGridVanguard>;
-};
-#else
-struct EclBaseProblem {
-  using InheritsFrom = std::tuple<VtkEclTracer, EclOutputBlackOil, EclCpGridVanguard>;
-};
-#endif
-
-}
-
-// The class which deals with ECL wells
-template<class TypeTag, class MyTypeTag>
-struct EclWellModel {
-    using type = UndefinedProperty;
-};
-
-// Write all solutions for visualization, not just the ones for the
-// report steps...
-template<class TypeTag, class MyTypeTag>
-struct EnableWriteAllSolutions {
-    using type = UndefinedProperty;
-};
-
-// The number of time steps skipped between writing two consequtive restart files
-template<class TypeTag, class MyTypeTag>
-struct RestartWritingInterval {
-    using type = UndefinedProperty;
-};
-
-// Enable partial compensation of systematic mass losses via the source term of the next time
-// step
-template<class TypeTag, class MyTypeTag>
-struct EclEnableDriftCompensation {
-    using type = UndefinedProperty;
-};
-
-// Enable the additional checks even if compiled in debug mode (i.e., with the NDEBUG
-// macro undefined). Next to a slightly better performance, this also eliminates some
-// print statements in debug mode.
-template<class TypeTag, class MyTypeTag>
-struct EnableDebuggingChecks {
-    using type = UndefinedProperty;
-};
-
-// if thermal flux boundaries are enabled an effort is made to preserve the initial
-// thermal gradient specified via the TEMPVD keyword
-template<class TypeTag, class MyTypeTag>
-struct EnableThermalFluxBoundaries {
-    using type = UndefinedProperty;
-};
-
-// Specify whether API tracking should be enabled (replaces PVT regions).
-// TODO: This is not yet implemented
-template<class TypeTag, class MyTypeTag>
-struct EnableApiTracking {
-    using type = UndefinedProperty;
-};
-
-// The class which deals with ECL aquifers
-template<class TypeTag, class MyTypeTag>
-struct EclAquiferModel {
-    using type = UndefinedProperty;
-};
-
-// In experimental mode, decides if the aquifer model should be enabled or not
-template<class TypeTag, class MyTypeTag>
-struct EclEnableAquifers {
-    using type = UndefinedProperty;
-};
-
-// time stepping parameters
-template<class TypeTag, class MyTypeTag>
-struct EclMaxTimeStepSizeAfterWellEvent {
-    using type = UndefinedProperty;
-};
-template<class TypeTag, class MyTypeTag>
-struct EclRestartShrinkFactor {
-    using type = UndefinedProperty;
-};
-template<class TypeTag, class MyTypeTag>
-struct EclEnableTuning {
-    using type = UndefinedProperty;
-};
-template<class TypeTag, class MyTypeTag>
-struct OutputMode {
-    using type = UndefinedProperty;
-};
-// Parameterize equilibration accuracy
-template<class TypeTag, class MyTypeTag>
-struct NumPressurePointsEquil {
-    using type = UndefinedProperty;
-};
-
-
-// Set the problem property
-template<class TypeTag>
-struct Problem<TypeTag, TTag::EclBaseProblem> {
-    using type = EclProblem<TypeTag>;
-};
-
-template<class TypeTag>
-struct Model<TypeTag, TTag::EclBaseProblem> {
-    using type = FIBlackOilModel<TypeTag>;
-};
-    
-// Select the element centered finite volume method as spatial discretization
-template<class TypeTag>
-struct SpatialDiscretizationSplice<TypeTag, TTag::EclBaseProblem> {
-    using type = TTag::EcfvDiscretization;
-};
-
-//! for ebos, use automatic differentiation to linearize the system of PDEs
-template<class TypeTag>
-struct LocalLinearizerSplice<TypeTag, TTag::EclBaseProblem> {
-    using type = TTag::AutoDiffLocalLinearizer;
-};
-
-// Set the material law for fluid fluxes
-template<class TypeTag>
-struct MaterialLaw<TypeTag, TTag::EclBaseProblem>
-{
-private:
-    using Scalar = GetPropType<TypeTag, Properties::Scalar>;
-    using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
-
-    using Traits = ThreePhaseMaterialTraits<Scalar,
-                                            /*wettingPhaseIdx=*/FluidSystem::waterPhaseIdx,
-                                            /*nonWettingPhaseIdx=*/FluidSystem::oilPhaseIdx,
-                                            /*gasPhaseIdx=*/FluidSystem::gasPhaseIdx>;
-
-public:
-    using EclMaterialLawManager = ::Opm::EclMaterialLawManager<Traits>;
-
-    using type = typename EclMaterialLawManager::MaterialLaw;
-};
-
-// Set the material law for energy storage in rock
-template<class TypeTag>
-struct SolidEnergyLaw<TypeTag, TTag::EclBaseProblem>
-{
-private:
-    using Scalar = GetPropType<TypeTag, Properties::Scalar>;
-    using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
-
-public:
-    using EclThermalLawManager = ::Opm::EclThermalLawManager<Scalar, FluidSystem>;
-
-    using type = typename EclThermalLawManager::SolidEnergyLaw;
-};
-
-// Set the material law for thermal conduction
-template<class TypeTag>
-struct ThermalConductionLaw<TypeTag, TTag::EclBaseProblem>
-{
-private:
-    using Scalar = GetPropType<TypeTag, Properties::Scalar>;
-    using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
-
-public:
-    using EclThermalLawManager = ::Opm::EclThermalLawManager<Scalar, FluidSystem>;
-
-    using type = typename EclThermalLawManager::ThermalConductionLaw;
-};
-
-// ebos can use a slightly faster stencil class because it does not need the normals and
-// the integration points of intersections
-template<class TypeTag>
-struct Stencil<TypeTag, TTag::EclBaseProblem>
-{
-private:
-    using Scalar = GetPropType<TypeTag, Properties::Scalar>;
-    using GridView = GetPropType<TypeTag, Properties::GridView>;
-
-public:
-    using type = EcfvStencil<Scalar,
-                             GridView,
-                             /*needIntegrationPos=*/false,
-                             /*needNormal=*/false>;
-};
-
-// by default use the dummy aquifer "model"
-template<class TypeTag>
-struct EclAquiferModel<TypeTag, TTag::EclBaseProblem> {
-    using type = EclBaseAquiferModel<TypeTag>;
-};
-
-// Enable aquifers by default in experimental mode
-template<class TypeTag>
-struct EclEnableAquifers<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// Enable gravity
-template<class TypeTag>
-struct EnableGravity<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// Enable diffusion
-template<class TypeTag>
-struct EnableDiffusion<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// only write the solutions for the report steps to disk
-template<class TypeTag>
-struct EnableWriteAllSolutions<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// disable API tracking
-template<class TypeTag>
-struct EnableApiTracking<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// The default for the end time of the simulation [s]
-//
-// By default, stop it after the universe will probably have stopped
-// to exist. (the ECL problem will finish the simulation explicitly
-// after it simulated the last episode specified in the deck.)
-template<class TypeTag>
-struct EndTime<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 1e100;
-};
-
-// The default for the initial time step size of the simulation [s].
-//
-// The chosen value means that the size of the first time step is the
-// one of the initial episode (if the length of the initial episode is
-// not millions of trillions of years, that is...)
-template<class TypeTag>
-struct InitialTimeStepSize<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 3600*24;
-};
-
-// the default for the allowed volumetric error for oil per second
-template<class TypeTag>
-struct NewtonTolerance<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 1e-2;
-};
-
-// the tolerated amount of "incorrect" amount of oil per time step for the complete
-// reservoir. this is scaled by the pore volume of the reservoir, i.e., larger reservoirs
-// will tolerate larger residuals.
-template<class TypeTag>
-struct EclNewtonSumTolerance<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 1e-4;
-};
-
-// set the exponent for the volume scaling of the sum tolerance: larger reservoirs can
-// tolerate a higher amount of mass lost per time step than smaller ones! since this is
-// not linear, we use the cube root of the overall pore volume by default, i.e., the
-// value specified by the NewtonSumTolerance parameter is the "incorrect" mass per
-// timestep for an reservoir that exhibits 1 m^3 of pore volume. A reservoir with a total
-// pore volume of 10^3 m^3 will tolerate 10 times as much.
-template<class TypeTag>
-struct EclNewtonSumToleranceExponent<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 1.0/3.0;
-};
-
-// set number of Newton iterations where the volumetric residual is considered for
-// convergence
-template<class TypeTag>
-struct EclNewtonStrictIterations<TypeTag, TTag::EclBaseProblem> {
-    static constexpr int value = 8;
-};
-
-// set fraction of the pore volume where the volumetric residual may be violated during
-// strict Newton iterations
-template<class TypeTag>
-struct EclNewtonRelaxedVolumeFraction<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 0.03;
-};
-
-// the maximum volumetric error of a cell in the relaxed region
-template<class TypeTag>
-struct EclNewtonRelaxedTolerance<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 1e9;
-};
-
-// Ignore the maximum error mass for early termination of the newton method.
-template<class TypeTag>
-struct NewtonMaxError<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 10e9;
-};
-
-// set the maximum number of Newton iterations to 14 because the likelyhood that a time
-// step succeeds at more than 14 Newton iteration is rather small
-template<class TypeTag>
-struct NewtonMaxIterations<TypeTag, TTag::EclBaseProblem> {
-    static constexpr int value = 14;
-};
-
-// also, reduce the target for the "optimum" number of Newton iterations to 6. Note that
-// this is only relevant if the time step is reduced from the report step size for some
-// reason. (because ebos first tries to do a report step using a single time step.)
-template<class TypeTag>
-struct NewtonTargetIterations<TypeTag, TTag::EclBaseProblem> {
-    static constexpr int value = 6;
-};
-
-// Disable the VTK output by default for this problem ...
-template<class TypeTag>
-struct EnableVtkOutput<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// ... but enable the ECL output by default
-template<class TypeTag>
-struct EnableEclOutput<TypeTag,TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-#ifdef HAVE_DAMARIS
-
-//! Disable the Damaris output by default
-template<class TypeTag>
-struct EnableDamarisOutput<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// If Damaris is available, write specific variable output in parallel
-template<class TypeTag>
-struct EnableDamarisOutputCollective<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-#endif
-
-// If available, write the ECL output in a non-blocking manner
-template<class TypeTag>
-struct EnableAsyncEclOutput<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// Write ESMRY file for fast loading of summary data
-template<class TypeTag>
-struct EnableEsmry<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// By default, use single precision for the ECL formated results
-template<class TypeTag>
-struct EclOutputDoublePrecision<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// The default location for the ECL output files
-template<class TypeTag>
-struct OutputDir<TypeTag, TTag::EclBaseProblem> {
-    static constexpr auto value = ".";
-};
-
-// the cache for intensive quantities can be used for ECL problems and also yields a
-// decent speedup...
-template<class TypeTag>
-struct EnableIntensiveQuantityCache<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// the cache for the storage term can also be used and also yields a decent speedup
-template<class TypeTag>
-struct EnableStorageCache<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// Use the "velocity module" which uses the Eclipse "NEWTRAN" transmissibilities
-template<class TypeTag>
-struct FluxModule<TypeTag, TTag::EclBaseProblem> {
-    using type = EclTransFluxModule<TypeTag>;
-};
-
-// Use the dummy gradient calculator in order not to do unnecessary work.
-template<class TypeTag>
-struct GradientCalculator<TypeTag, TTag::EclBaseProblem> {
-    using type = EclDummyGradientCalculator<TypeTag>;
-};
-
-// Use a custom Newton-Raphson method class for ebos in order to attain more
-// sophisticated update and error computation mechanisms
-template<class TypeTag>
-struct NewtonMethod<TypeTag, TTag::EclBaseProblem> {
-    using type = EclNewtonMethod<TypeTag>;
-};
-
-// The frequency of writing restart (*.ers) files. This is the number of time steps
-// between writing restart files
-template<class TypeTag>
-struct RestartWritingInterval<TypeTag, TTag::EclBaseProblem> {
-    static constexpr int value = 0xffffff; // disable
-};
-
-// Drift compensation is an experimental feature, i.e., systematic errors in the
-// conservation quantities are only compensated for
-// as default if experimental mode is enabled.
-template<class TypeTag>
-struct EclEnableDriftCompensation<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-
-};
-
-// By default, we enable the debugging checks if we're compiled in debug mode
-template<class TypeTag>
-struct EnableDebuggingChecks<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// store temperature (but do not conserve energy, as long as EnableEnergy is false)
-template<class TypeTag>
-struct EnableTemperature<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = true;
-};
-
-// disable all extensions supported by black oil model. this should not really be
-// necessary but it makes things a bit more explicit
-template<class TypeTag>
-struct EnablePolymer<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-template<class TypeTag>
-struct EnableSolvent<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-template<class TypeTag>
-struct EnableEnergy<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-template<class TypeTag>
-struct EnableFoam<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-template<class TypeTag>
-struct EnableExtbo<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-template<class TypeTag>
-struct EnableMICP<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// disable thermal flux boundaries by default
-template<class TypeTag>
-struct EnableThermalFluxBoundaries<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// By default, simulators derived from the EclBaseProblem are production simulators,
-// i.e., experimental features must be explicitly enabled at compile time
-template<class TypeTag>
-struct EnableExperiments<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-// set defaults for the time stepping parameters
-template<class TypeTag>
-struct EclMaxTimeStepSizeAfterWellEvent<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 3600*24*365.25;
-};
-template<class TypeTag>
-struct EclRestartShrinkFactor<TypeTag, TTag::EclBaseProblem> {
-    using type = GetPropType<TypeTag, Scalar>;
-    static constexpr type value = 3;
-};
-template<class TypeTag>
-struct EclEnableTuning<TypeTag, TTag::EclBaseProblem> {
-    static constexpr bool value = false;
-};
-
-template<class TypeTag>
-struct OutputMode<TypeTag, TTag::EclBaseProblem> {
-    static constexpr auto value = "all";
-};
-// Parameterize equilibration accuracy
-template<class TypeTag>
-struct NumPressurePointsEquil<TypeTag, TTag::EclBaseProblem> {
-    static constexpr int value = ParserKeywords::EQLDIMS::DEPTH_NODES_P::defaultValue;
-};
-
-
-} // namespace Opm::Properties
-
+#include <set>
+#include <string>
+#include <vector>
 
 namespace Opm {
 
@@ -707,8 +193,6 @@ public:
     using EclGenericProblem<GridView,FluidSystem,Scalar>::helpPreamble;
     using EclGenericProblem<GridView,FluidSystem,Scalar>::shouldWriteOutput;
     using EclGenericProblem<GridView,FluidSystem,Scalar>::shouldWriteRestartFile;
-    using EclGenericProblem<GridView,FluidSystem,Scalar>::maxTimeIntegrationFailures;
-    using EclGenericProblem<GridView,FluidSystem,Scalar>::minTimeStepSize;
     using EclGenericProblem<GridView,FluidSystem,Scalar>::rockCompressibility;
     using EclGenericProblem<GridView,FluidSystem,Scalar>::rockReferencePressure;
     using EclGenericProblem<GridView,FluidSystem,Scalar>::porosity;
@@ -744,10 +228,6 @@ public:
         if constexpr (enableExperiments)
             EWOMS_REGISTER_PARAM(TypeTag, bool, EclEnableAquifers,
                                  "Enable analytic and numeric aquifer models");
-        EWOMS_REGISTER_PARAM(TypeTag, Scalar, EclMaxTimeStepSizeAfterWellEvent,
-                             "Maximum time step size after an well event");
-        EWOMS_REGISTER_PARAM(TypeTag, Scalar, EclRestartShrinkFactor,
-                             "Factor by which the time step is reduced after convergence failure");
         EWOMS_REGISTER_PARAM(TypeTag, bool, EclEnableTuning,
                              "Honor some aspects of the TUNING keyword from the ECL deck.");
         EWOMS_REGISTER_PARAM(TypeTag, std::string, OutputMode,
@@ -755,7 +235,6 @@ public:
         EWOMS_REGISTER_PARAM(TypeTag, int, NumPressurePointsEquil,
                              "Number of pressure points (in each direction) in tables used for equilibration");
         EWOMS_HIDE_PARAM(TypeTag, NumPressurePointsEquil); // Users will typically not need to modify this parameter..
-
     }
 
 
@@ -833,15 +312,11 @@ public:
 
         this->enableTuning_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableTuning);
         this->initialTimeStepSize_ = EWOMS_GET_PARAM(TypeTag, Scalar, InitialTimeStepSize);
-        this->minTimeStepSize_ = EWOMS_GET_PARAM(TypeTag, Scalar, MinTimeStepSize);
-        this->maxTimeStepSize_ = EWOMS_GET_PARAM(TypeTag, Scalar, MaxTimeStepSize);
-        this->maxTimeStepAfterWellEvent_ = EWOMS_GET_PARAM(TypeTag, Scalar, EclMaxTimeStepSizeAfterWellEvent);
-        this->restartShrinkFactor_ = EWOMS_GET_PARAM(TypeTag, Scalar, EclRestartShrinkFactor);
-        this->maxFails_ = EWOMS_GET_PARAM(TypeTag, unsigned, MaxTimeStepDivisions);
-        
+        this->maxTimeStepAfterWellEvent_ = EWOMS_GET_PARAM(TypeTag, double, TimeStepAfterEventInDays)*24*60*60;
+
         // The value N for this parameter is defined in the following order of presedence:
         // 1. Command line value (--num-pressure-points-equil=N)
-        // 2. EQLDIMS item 2 
+        // 2. EQLDIMS item 2
         // Default value is defined in opm-common/src/opm/input/eclipse/share/keywords/000_Eclipse100/E/EQLDIMS
         if (EWOMS_PARAM_IS_SET(TypeTag, int, NumPressurePointsEquil))
         {
@@ -891,27 +366,37 @@ public:
             const auto& tuning = schedule[0].tuning();
             this->initialTimeStepSize_ = tuning.TSINIT;
             this->maxTimeStepAfterWellEvent_ = tuning.TMAXWC;
-            this->maxTimeStepSize_ = tuning.TSMAXZ;
-            this->restartShrinkFactor_ = 1./tuning.TSFCNV;
-            this->minTimeStepSize_ = tuning.TSMINZ;
         }
 
         this->initFluidSystem_();
 
         // deal with DRSDT
-        this->initDRSDT_(this->model().numGridDof(), this->episodeIndex());
+        this->mixControls_.init(this->model().numGridDof(),
+                                this->episodeIndex(),
+                                eclState.runspec().tabdims().getNumPVTTables());
 
-        this->readRockParameters_(simulator.vanguard().cellCenterDepths());
+        if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) &&
+            FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
+            this->maxOilSaturation_.resize(this->model().numGridDof(), 0.0);
+        }
+
+        this->readRockParameters_(simulator.vanguard().cellCenterDepths(),
+                                  [&simulator](const unsigned idx)
+                                  {
+                                      std::array<int,dim> coords;
+                                      simulator.vanguard().cartesianCoordinate(idx, coords);
+                                      for (auto& c : coords) {
+                                          ++c;
+                                      }
+                                      return coords;
+                                  });
         readMaterialParameters_();
         readThermalParameters_();
 
         // Re-ordering in case of ALUGrid
-        std::function<unsigned int(unsigned int)> gridToEquilGrid;
-        #if USE_ALUGRID
-        gridToEquilGrid = [&simulator](unsigned int i) {
+        std::function<unsigned int(unsigned int)> gridToEquilGrid = [&simulator](unsigned int i) {
             return simulator.vanguard().gridIdxToEquilGridIdx(i);
         };
-        #endif // USE_ALUGRID
         transmissibilities_.finishInit(gridToEquilGrid);
 
         const auto& initconfig = eclState.getInitConfig();
@@ -929,7 +414,7 @@ public:
             const auto& vanguard = this->simulator().vanguard();
             const auto& gridView = vanguard.gridView();
             int numElements = gridView.size(/*codim=*/0);
-            this->maxPolymerAdsorption_.resize(numElements, 0.0);
+            this->polymer_.maxAdsorption.resize(numElements, 0.0);
         }
 
         readBoundaryConditions_();
@@ -951,12 +436,9 @@ public:
                 eclWriter_->setTransmissibilities(&simulator.problem().eclTransmissibilities());
 
             // Re-ordering in case of ALUGrid
-            std::function<unsigned int(unsigned int)> equilGridToGrid;
-            #if USE_ALUGRID
-            equilGridToGrid = [&simulator](unsigned int i) {
+            std::function<unsigned int(unsigned int)> equilGridToGrid = [&simulator](unsigned int i) {
                 return simulator.vanguard().gridEquilIdxToGridIdx(i);
             };
-            #endif // USE_ALUGRID
             eclWriter_->writeInit(equilGridToGrid);
         }
 
@@ -1045,12 +527,9 @@ public:
             eclBroadcast(cc, eclState.getTransMult() );
 
             // Re-ordering in case of ALUGrid
-            std::function<unsigned int(unsigned int)> equilGridToGrid;
-            #if USE_ALUGRID
-            equilGridToGrid = [&simulator](unsigned int i) {
+            std::function<unsigned int(unsigned int)> equilGridToGrid = [&simulator](unsigned int i) {
                   return simulator.vanguard().gridEquilIdxToGridIdx(i);
             };
-            #endif // USE_ALUGRID
 
             // re-compute all quantities which may possibly be affected.
             transmissibilities_.update(true, equilGridToGrid);
@@ -1192,12 +671,9 @@ public:
         int episodeIdx = this->episodeIndex();
 
         // Re-ordering in case of Alugrid
-        std::function<unsigned int(unsigned int)> gridToEquilGrid;
-        #if USE_ALUGRID
-        gridToEquilGrid = [&simulator](unsigned int i) {
+        std::function<unsigned int(unsigned int)> gridToEquilGrid = [&simulator](unsigned int i) {
             return simulator.vanguard().gridIdxToEquilGridIdx(i);
         };
-        #endif // USE_ALUGRID
 
         std::function<void(bool)> transUp =
             [this,gridToEquilGrid](bool global) {
@@ -1625,7 +1101,7 @@ public:
     /*!
      * \copydoc FvBaseProblem::boundary
      *
-     * ECLiPSE uses no-flow conditions for all boundaries. \todo really?
+     * Reservoir simulation uses no-flow conditions as default for all boundaries.
      */
     template <class Context>
     void boundary(BoundaryRateVector& values,
@@ -1655,8 +1131,7 @@ public:
             unsigned interiorDofIdx = context.interiorScvIndex(spaceIdx, timeIdx);
             unsigned globalDofIdx = context.globalSpaceIndex(interiorDofIdx, timeIdx);
             unsigned pvtRegionIdx = pvtRegionIndex(context, spaceIdx, timeIdx);
-            FaceDir::DirEnum dir = FaceDir::FromIntersectionIndex(indexInInside);
-            const auto [type, massrate] = boundaryCondition(globalDofIdx, dir);
+            const auto [type, massrate] = boundaryCondition(globalDofIdx, indexInInside);
             if (type == BCType::THERMAL)
                 values.setThermalFlow(context, spaceIdx, timeIdx, boundaryFluidState(globalDofIdx, indexInInside));
             else if (type == BCType::FREE || type == BCType::DIRICHLET)
@@ -1706,22 +1181,9 @@ public:
      */
     Scalar maxGasDissolutionFactor(unsigned timeIdx, unsigned globalDofIdx) const
     {
-        int pvtRegionIdx = this->pvtRegionIndex(globalDofIdx);
-        int episodeIdx = this->episodeIndex();
-        if (!this->drsdtActive_(episodeIdx) || this->maxDRs_[pvtRegionIdx] < 0.0)
-            return std::numeric_limits<Scalar>::max()/2.0;
-
-        Scalar scaling = 1.0;
-        if (this->drsdtConvective_(episodeIdx)) {
-           scaling = this->convectiveDrs_[globalDofIdx];
-        }
-
-        // this is a bit hacky because it assumes that a time discretization with only
-        // two time indices is used.
-        if (timeIdx == 0)
-            return this->lastRs_[globalDofIdx] + this->maxDRs_[pvtRegionIdx] * scaling;
-        else
-            return this->lastRs_[globalDofIdx];
+        return this->mixControls_.maxGasDissolutionFactor(timeIdx, globalDofIdx,
+                                                          this->episodeIndex(),
+                                                          this->pvtRegionIndex(globalDofIdx));
     }
 
     /*!
@@ -1730,17 +1192,9 @@ public:
      */
     Scalar maxOilVaporizationFactor(unsigned timeIdx, unsigned globalDofIdx) const
     {
-        int pvtRegionIdx = this->pvtRegionIndex(globalDofIdx);
-        int episodeIdx = this->episodeIndex();
-        if (!this->drvdtActive_(episodeIdx) || this->maxDRv_[pvtRegionIdx] < 0.0)
-            return std::numeric_limits<Scalar>::max()/2.0;
-
-        // this is a bit hacky because it assumes that a time discretization with only
-        // two time indices is used.
-        if (timeIdx == 0)
-            return this->lastRv_[globalDofIdx] + this->maxDRv_[pvtRegionIdx];
-        else
-            return this->lastRv_[globalDofIdx];
+        return this->mixControls_.maxOilVaporizationFactor(timeIdx, globalDofIdx,
+                                                           this->episodeIndex(),
+                                                           this->pvtRegionIndex(globalDofIdx));
     }
 
     /*!
@@ -1754,8 +1208,8 @@ public:
     bool recycleFirstIterationStorage() const
     {
         int episodeIdx = this->episodeIndex();
-        return !this->drsdtActive_(episodeIdx) &&
-               !this->drvdtActive_(episodeIdx) &&
+        return !this->mixControls_.drsdtActive(episodeIdx) &&
+               !this->mixControls_.drvdtActive(episodeIdx) &&
                this->rockCompPoroMultWc_.empty() &&
                this->rockCompPoroMult_.empty();
     }
@@ -1778,10 +1232,10 @@ public:
             values[Indices::solventSaturationIdx] = this->solventSaturation_[globalDofIdx];
 
         if constexpr (enablePolymer)
-            values[Indices::polymerConcentrationIdx] = this->polymerConcentration_[globalDofIdx];
+            values[Indices::polymerConcentrationIdx] = this->polymer_.concentration[globalDofIdx];
 
         if constexpr (enablePolymerMolarWeight)
-            values[Indices::polymerMoleWeightIdx]= this->polymerMoleWeight_[globalDofIdx];
+            values[Indices::polymerMoleWeightIdx]= this->polymer_.moleWeight[globalDofIdx];
 
         if constexpr (enableBrine) {
             if (enableSaltPrecipitation && values.primaryVarsMeaningBrine() == PrimaryVariables::BrineMeaning::Sp) {
@@ -1793,11 +1247,11 @@ public:
         }
 
         if constexpr (enableMICP){
-            values[Indices::microbialConcentrationIdx]= this->microbialConcentration_[globalDofIdx];
-            values[Indices::oxygenConcentrationIdx]= this->oxygenConcentration_[globalDofIdx];
-            values[Indices::ureaConcentrationIdx]= this->ureaConcentration_[globalDofIdx];
-            values[Indices::calciteConcentrationIdx]= this->calciteConcentration_[globalDofIdx];
-            values[Indices::biofilmConcentrationIdx]= this->biofilmConcentration_[globalDofIdx];
+            values[Indices::microbialConcentrationIdx] = this->micp_.microbialConcentration[globalDofIdx];
+            values[Indices::oxygenConcentrationIdx]= this->micp_.oxygenConcentration[globalDofIdx];
+            values[Indices::ureaConcentrationIdx]= this->micp_.ureaConcentration[globalDofIdx];
+            values[Indices::calciteConcentrationIdx]= this->micp_.calciteConcentration[globalDofIdx];
+            values[Indices::biofilmConcentrationIdx]= this->micp_.biofilmConcentration[globalDofIdx];
         }
 
         values.checkDefined();
@@ -2233,7 +1687,7 @@ protected:
         const auto& model = this->simulator().model();
         const auto& primaryVars = model.solution(/*timeIdx*/0);
         const auto& vanguard = this->simulator().vanguard();
-        size_t numGridDof = primaryVars.size();
+        std::size_t numGridDof = primaryVars.size();
         OPM_BEGIN_PARALLEL_TRY_CATCH();
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -2252,80 +1706,30 @@ protected:
         // update the "last Rs" values for all elements, including the ones in the ghost
         // and overlap regions
         int episodeIdx = this->episodeIndex();
-        std::array<bool,3> active{this->drsdtConvective_(episodeIdx),
-                                  this->drsdtActive_(episodeIdx),
-                                  this->drvdtActive_(episodeIdx)};
-        if (!active[0] && !active[1] && !active[2])
-          return;
+        std::array<bool,3> active{this->mixControls_.drsdtConvective(episodeIdx),
+                                  this->mixControls_.drsdtActive(episodeIdx),
+                                  this->mixControls_.drvdtActive(episodeIdx)};
+        if (!active[0] && !active[1] && !active[2]) {
+            return;
+        }
 
         this->updateProperty_("EclProblem::updateCompositionChangeLimits_()) failed:",
-                              [this,episodeIdx,active](unsigned compressedDofIdx, const IntensiveQuantities& iq)
+                              [this,episodeIdx,active](unsigned compressedDofIdx,
+                                                       const IntensiveQuantities& iq)
                               {
-                                  this->updateCompositionChangeLimits_(compressedDofIdx,
-                                                                       iq,
-                                                                       episodeIdx,
-                                                                       active);
+                                  const DimMatrix& perm = this->intrinsicPermeability(compressedDofIdx);
+                                  const Scalar distZ = active[0] ? this->simulator().vanguard().cellThickness(compressedDofIdx) : 0.0;
+                                  const int pvtRegionIdx = this->pvtRegionIndex(compressedDofIdx);
+                                  this->mixControls_.update(compressedDofIdx,
+                                                            iq,
+                                                            episodeIdx,
+                                                            this->gravity_[dim - 1],
+                                                            perm[dim - 1][dim - 1],
+                                                            distZ,
+                                                            pvtRegionIdx,
+                                                            active);
                               }
             );
-    }
-
-    void updateCompositionChangeLimits_(unsigned compressedDofIdx, const IntensiveQuantities& iq,int episodeIdx, const std::array<bool,3>& active)
-    {
-        auto& simulator = this->simulator();
-        auto& vanguard = simulator.vanguard();
-        if (active[0]) {
-            // This implements the convective DRSDT as described in
-            // Sandve et al. "Convective dissolution in field scale CO2 storage simulations using the OPM Flow
-            // simulator" Submitted to TCCS 11, 2021
-            const Scalar g = this->gravity_[dim - 1];
-            const DimMatrix& perm = intrinsicPermeability(compressedDofIdx);
-            const Scalar permz = perm[dim - 1][dim - 1]; // The Z permeability
-            const Scalar distZ = vanguard.cellThickness(compressedDofIdx);
-            const auto& fs = iq.fluidState();
-            const Scalar t = getValue(fs.temperature(FluidSystem::oilPhaseIdx));
-            const Scalar p = getValue(fs.pressure(FluidSystem::oilPhaseIdx));
-            const Scalar so = getValue(fs.saturation(FluidSystem::oilPhaseIdx));
-            const Scalar rssat = FluidSystem::oilPvt().saturatedGasDissolutionFactor(fs.pvtRegionIndex(), t, p);
-            const Scalar saturatedInvB
-                = FluidSystem::oilPvt().saturatedInverseFormationVolumeFactor(fs.pvtRegionIndex(), t, p);
-            const Scalar rsZero = 0.0;
-            const Scalar pureDensity
-                = FluidSystem::oilPvt().inverseFormationVolumeFactor(fs.pvtRegionIndex(), t, p, rsZero)
-                * FluidSystem::oilPvt().oilReferenceDensity(fs.pvtRegionIndex());
-            const Scalar saturatedDensity = saturatedInvB
-                * (FluidSystem::oilPvt().oilReferenceDensity(fs.pvtRegionIndex())
-                   + rssat * FluidSystem::referenceDensity(FluidSystem::gasPhaseIdx, fs.pvtRegionIndex()));
-            const Scalar deltaDensity = saturatedDensity - pureDensity;
-            const Scalar rs = getValue(fs.Rs());
-            const Scalar visc = FluidSystem::oilPvt().viscosity(fs.pvtRegionIndex(), t, p, rs);
-            const Scalar poro = getValue(iq.porosity());
-            // Note that for so = 0 this gives no limits (inf) for the dissolution rate
-            // Also we restrict the effect of convective mixing to positive density differences
-            // i.e. we only allow for fingers moving downward
-            this->convectiveDrs_[compressedDofIdx]
-                = permz * rssat * max(0.0, deltaDensity) * g / (so * visc * distZ * poro);
-        }
-
-        if (active[1]) {
-            const auto& fs = iq.fluidState();
-
-            using FluidState = typename std::decay<decltype(fs)>::type;
-
-            int pvtRegionIdx = this->pvtRegionIndex(compressedDofIdx);
-            const auto& oilVaporizationControl = vanguard.schedule()[episodeIdx].oilvap();
-            if (oilVaporizationControl.getOption(pvtRegionIdx) || fs.saturation(gasPhaseIdx) > freeGasMinSaturation_)
-                this->lastRs_[compressedDofIdx]
-                    = BlackOil::template getRs_<FluidSystem, FluidState, Scalar>(fs, iq.pvtRegionIndex());
-            else
-                this->lastRs_[compressedDofIdx] = std::numeric_limits<Scalar>::infinity();
-        }
-
-        if (active[2]) {
-            const auto& fs = iq.fluidState();
-            using FluidState = typename std::decay<decltype(fs)>::type;
-            this->lastRv_[compressedDofIdx]
-                = BlackOil::template getRv_<FluidSystem, FluidState, Scalar>(fs, iq.pvtRegionIndex());
-        }
     }
 
     bool updateMaxOilSaturation_()
@@ -2473,14 +1877,14 @@ protected:
         const auto& vanguard = simulator.vanguard();
         const auto& eclState = vanguard.eclState();
 
-        size_t numDof = this->model().numGridDof();
+        std::size_t numDof = this->model().numGridDof();
 
         this->referencePorosity_[/*timeIdx=*/0].resize(numDof);
 
         const auto& fp = eclState.fieldProps();
         const std::vector<double> porvData = fp.porv(false);
         const std::vector<int> actnumData = fp.actnum();
-        for (size_t dofIdx = 0; dofIdx < numDof; ++ dofIdx) {
+        for (std::size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
             Scalar poreVolume = porvData[dofIdx];
 
             // we define the porosity as the accumulated pore volume divided by the
@@ -2511,8 +1915,8 @@ protected:
                                                            enableMICP);
 
         //initialize min/max values
-        size_t numElems = this->model().numGridDof();
-        for (size_t elemIdx = 0; elemIdx < numElems; ++elemIdx) {
+        std::size_t numElems = this->model().numGridDof();
+        for (std::size_t elemIdx = 0; elemIdx < numElems; ++elemIdx) {
             const auto& fs = initialFluidStates_[elemIdx];
             if (!this->maxWaterSaturation_.empty())
                 this->maxWaterSaturation_[elemIdx] = std::max(this->maxWaterSaturation_[elemIdx], fs.saturation(waterPhaseIdx));
@@ -2533,9 +1937,9 @@ protected:
         using EquilInitializer = EclEquilInitializer<TypeTag>;
         EquilInitializer equilInitializer(simulator, *materialLawManager_);
 
-        size_t numElems = this->model().numGridDof();
+        std::size_t numElems = this->model().numGridDof();
         initialFluidStates_.resize(numElems);
-        for (size_t elemIdx = 0; elemIdx < numElems; ++elemIdx) {
+        for (std::size_t elemIdx = 0; elemIdx < numElems; ++elemIdx) {
             auto& elemFluidState = initialFluidStates_[elemIdx];
             elemFluidState.assign(equilInitializer.initialFluidState(elemIdx));
         }
@@ -2562,31 +1966,27 @@ protected:
         Scalar dt = std::min(eclWriter_->restartTimeStepSize(), simulator.episodeLength());
         simulator.setTimeStepSize(dt);
 
-        size_t numElems = this->model().numGridDof();
+        std::size_t numElems = this->model().numGridDof();
         initialFluidStates_.resize(numElems);
         if constexpr (enableSolvent)
             this->solventSaturation_.resize(numElems, 0.0);
 
         if constexpr (enablePolymer)
-            this->polymerConcentration_.resize(numElems, 0.0);
+            this->polymer_.concentration.resize(numElems, 0.0);
 
         if constexpr (enablePolymerMolarWeight) {
             const std::string msg {"Support of the RESTART for polymer molecular weight "
                                    "is not implemented yet. The polymer weight value will be "
                                    "zero when RESTART begins"};
             OpmLog::warning("NO_POLYMW_RESTART", msg);
-            this->polymerMoleWeight_.resize(numElems, 0.0);
+            this->polymer_.moleWeight.resize(numElems, 0.0);
         }
 
-        if constexpr (enableMICP){
-            this->microbialConcentration_.resize(numElems, 0.0);
-            this->oxygenConcentration_.resize(numElems, 0.0);
-            this->ureaConcentration_.resize(numElems, 0.0);
-            this->biofilmConcentration_.resize(numElems, 0.0);
-            this->calciteConcentration_.resize(numElems, 0.0);
-          }
+        if constexpr (enableMICP) {
+            this->micp_.resize(numElems);
+        }
 
-        for (size_t elemIdx = 0; elemIdx < numElems; ++elemIdx) {
+        for (std::size_t elemIdx = 0; elemIdx < numElems; ++elemIdx) {
             auto& elemFluidState = initialFluidStates_[elemIdx];
             elemFluidState.setPvtRegionIndex(pvtRegionIndex(elemIdx));
             eclWriter_->eclOutputModule().initHysteresisParams(simulator, elemIdx);
@@ -2609,37 +2009,22 @@ protected:
                     this->solventSaturation_[elemIdx] = ssol;
             }
 
-            if (! this->lastRs_.empty()) {
-                this->lastRs_[elemIdx] = elemFluidState.Rs();
-            }
-
-            if (! this->lastRv_.empty()) {
-                this->lastRv_[elemIdx] = elemFluidState.Rv();
-            }
+            this->mixControls_.updateLastValues(elemIdx, elemFluidState.Rs(), elemFluidState.Rv());
 
             if constexpr (enablePolymer)
-                 this->polymerConcentration_[elemIdx] = eclWriter_->eclOutputModule().getPolymerConcentration(elemIdx);
+                 this->polymer_.concentration[elemIdx] = eclWriter_->eclOutputModule().getPolymerConcentration(elemIdx);
             if constexpr (enableMICP){
-                 this->microbialConcentration_[elemIdx] = eclWriter_->eclOutputModule().getMicrobialConcentration(elemIdx);
-                 this->oxygenConcentration_[elemIdx] = eclWriter_->eclOutputModule().getOxygenConcentration(elemIdx);
-                 this->ureaConcentration_[elemIdx] = eclWriter_->eclOutputModule().getUreaConcentration(elemIdx);
-                 this->biofilmConcentration_[elemIdx] = eclWriter_->eclOutputModule().getBiofilmConcentration(elemIdx);
-                 this->calciteConcentration_[elemIdx] = eclWriter_->eclOutputModule().getCalciteConcentration(elemIdx);
+                 this->micp_.microbialConcentration[elemIdx] = eclWriter_->eclOutputModule().getMicrobialConcentration(elemIdx);
+                 this->micp_.oxygenConcentration[elemIdx] = eclWriter_->eclOutputModule().getOxygenConcentration(elemIdx);
+                 this->micp_.ureaConcentration[elemIdx] = eclWriter_->eclOutputModule().getUreaConcentration(elemIdx);
+                 this->micp_.biofilmConcentration[elemIdx] = eclWriter_->eclOutputModule().getBiofilmConcentration(elemIdx);
+                 this->micp_.calciteConcentration[elemIdx] = eclWriter_->eclOutputModule().getCalciteConcentration(elemIdx);
             }
             // if we need to restart for polymer molecular weight simulation, we need to add related here
         }
 
         const int episodeIdx = this->episodeIndex();
-        const auto& oilVaporizationControl = simulator.vanguard().schedule()[episodeIdx].oilvap();
-        if (this->drsdtActive_(episodeIdx))
-            // DRSDT is enabled
-            for (size_t pvtRegionIdx = 0; pvtRegionIdx < this->maxDRs_.size(); ++pvtRegionIdx)
-                this->maxDRs_[pvtRegionIdx] = oilVaporizationControl.getMaxDRSDT(pvtRegionIdx)*simulator.timeStepSize();
-
-        if (this->drvdtActive_(episodeIdx))
-            // DRVDT is enabled
-            for (size_t pvtRegionIdx = 0; pvtRegionIdx < this->maxDRv_.size(); ++pvtRegionIdx)
-                this->maxDRv_[pvtRegionIdx] = oilVaporizationControl.getMaxDRVDT(pvtRegionIdx)*simulator.timeStepSize();
+        this->mixControls_.updateMaxValues(episodeIdx, simulator.timeStepSize());
 
         // assign the restart solution to the current solution. note that we still need
         // to compute real initial solution after this because the initial fluid states
@@ -2669,7 +2054,7 @@ protected:
         // this is used to recover some RESTART running with the defaulted single-precision format
         const Scalar smallSaturationTolerance = 1.e-6;
         Scalar sumSaturation = 0.0;
-        for (size_t phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
+        for (std::size_t phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
             if (FluidSystem::phaseIsActive(phaseIdx)) {
                 if (elemFluidState.saturation(phaseIdx) < smallSaturationTolerance)
                     elemFluidState.setSaturation(phaseIdx, 0.0);
@@ -2687,7 +2072,7 @@ protected:
 
         assert(sumSaturation > 0.0);
 
-        for (size_t phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
+        for (std::size_t phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
             if (FluidSystem::phaseIsActive(phaseIdx)) {
                 const Scalar saturation = elemFluidState.saturation(phaseIdx) / sumSaturation;
                 elemFluidState.setSaturation(phaseIdx, saturation);
@@ -2741,7 +2126,7 @@ protected:
             throw std::runtime_error("The ECL input file requires the SALTP keyword to be present if"
                                      " salt precipitation is enabled and the model is initialized explicitly");
 
-        size_t numDof = this->model().numGridDof();
+        std::size_t numDof = this->model().numGridDof();
 
         initialFluidStates_.resize(numDof);
 
@@ -2787,7 +2172,7 @@ protected:
             saltpData = fp.get_double("SALTP");
 
         // calculate the initial fluid states
-        for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
+        for (std::size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
             auto& dofFluidState = initialFluidStates_[dofIdx];
 
             dofFluidState.setPvtRegionIndex(pvtRegionIndex(dofIdx));
@@ -2928,14 +2313,15 @@ protected:
     bool updateMaxPolymerAdsorption_(unsigned compressedDofIdx, const IntensiveQuantities& iq)
     {
         const Scalar pa = scalarValue(iq.polymerAdsorption());
-        auto& mpa = this->maxPolymerAdsorption_;
-        if(mpa[compressedDofIdx]<pa){
+        auto& mpa = this->polymer_.maxAdsorption;
+        if (mpa[compressedDofIdx] < pa) {
             mpa[compressedDofIdx] = pa;
             return true;
-        }else{
+        } else {
             return false;
         }
     }
+
 private:
     struct PffDofData_
     {
@@ -2981,7 +2367,7 @@ private:
         if (bcconfig.size() > 0) {
             nonTrivialBoundaryConditions_ = true;
 
-            size_t numCartDof = vanguard.cartesianSize();
+            std::size_t numCartDof = vanguard.cartesianSize();
             unsigned numElems = vanguard.gridView().size(/*codim=*/0);
             std::vector<int> cartesianToCompressedElemIdx(numCartDof, -1);
 
@@ -3072,7 +2458,7 @@ private:
             }
         }
 
-        size_t numDof = this->model().numGridDof();
+        std::size_t numDof = this->model().numGridDof();
         const auto& comm = this->simulator().vanguard().grid().comm();
         comm.sum(sumInvB.data(),sumInvB.size());
         Scalar numTotalDof = comm.sum(numDof);
@@ -3096,8 +2482,6 @@ private:
     EclThresholdPressure<TypeTag> thresholdPressures_;
 
     std::vector<InitialFluidState> initialFluidStates_;
-
-    constexpr static Scalar freeGasMinSaturation_ = 1e-7;
 
     bool enableDriftCompensation_;
     GlobalEqVector drift_;
@@ -3124,7 +2508,7 @@ private:
     {
         std::array<std::vector<T>,6> data;
 
-        void resize(size_t size, T defVal)
+        void resize(std::size_t size, T defVal)
         {
             for (auto& d : data)
                 d.resize(size, defVal);

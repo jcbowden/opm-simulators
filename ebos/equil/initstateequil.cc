@@ -21,74 +21,57 @@
   copyright holders.
 */
 
-#include "config.h"
-#include "initstateequil.hh"
-#include "initstateequil_impl.hh"
+#include <config.h>
+#include <ebos/equil/initstateequil.hh>
+#include <ebos/equil/initstateequil_impl.hh>
+
+#include <opm/grid/CpGrid.hpp>
+
+#if HAVE_DUNE_FEM
+#include <dune/fem/gridpart/adaptiveleafgridpart.hh>
+#include <dune/fem/gridpart/common/gridpart2gridview.hh>
+#include <ebos/femcpgridcompat.hh>
+#endif
 
 namespace Opm {
 namespace EQUIL {
 namespace DeckDependent {
-#if HAVE_DUNE_FEM
-using GridView = Dune::Fem::GridPart2GridViewImpl<
-                                     Dune::Fem::AdaptiveLeafGridPart<
-                                         Dune::CpGrid,
-                                         Dune::PartitionIteratorType(4),
-                                         false>>;
-#else
-using GridView = Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>;
-#endif
-
-using Mapper = Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
-template class InitialStateComputer<BlackOilFluidSystem<double>,
-                                    Dune::CpGrid,
-                                    GridView,
-                                    Mapper,
-                                    Dune::CartesianIndexMapper<Dune::CpGrid>>;
 
 using MatLaw = EclMaterialLawManager<ThreePhaseMaterialTraits<double,0,1,2>>;
-template InitialStateComputer<BlackOilFluidSystem<double>,
-                              Dune::CpGrid,
-                              GridView,
-                              Mapper,
-                              Dune::CartesianIndexMapper<Dune::CpGrid>>::
-    InitialStateComputer(MatLaw&,
-                         const EclipseState&,
-                         const Dune::CpGrid&,
-                         const GridView&,
-                         const Dune::CartesianIndexMapper<Dune::CpGrid>&,
-                         const double,
-                         const int,
-                         const bool);
-#if HAVE_DUNE_ALUGRID
-#if HAVE_MPI
-using ALUGridComm = Dune::ALUGridMPIComm;
-#else
-using ALUGridComm = Dune::ALUGridNoComm;
-#endif //HAVE_MPI
-using ALUGrid3CN = Dune::ALUGrid<3, 3, Dune::cube, Dune::nonconforming, ALUGridComm>;
-using ALUGridView = Dune::GridView<Dune::ALU3dLeafGridViewTraits<const ALUGrid3CN, Dune::PartitionIteratorType(4)>>;
-using ALUGridMapper = Dune::MultipleCodimMultipleGeomTypeMapper<ALUGridView>;
-template class InitialStateComputer<BlackOilFluidSystem<double>,
-                                    ALUGrid3CN,
-                                    ALUGridView,
-                                    ALUGridMapper,
-                                    Dune::CartesianIndexMapper<ALUGrid3CN>>;
 
-template InitialStateComputer<BlackOilFluidSystem<double>,
-                              ALUGrid3CN,
-                              ALUGridView,
-                              ALUGridMapper,
-                              Dune::CartesianIndexMapper<ALUGrid3CN>>::
-    InitialStateComputer(MatLaw&,
-                         const EclipseState&,
-                         const ALUGrid3CN&,
-                         const ALUGridView&,
-                         const Dune::CartesianIndexMapper<ALUGrid3CN>&,
-                         const double,
-                         const int,
-                         const bool);
-#endif //HAVE_DUNE_ALUGRID
+#define INSTANCE_COMP(GridView, Mapper) \
+    template class InitialStateComputer<BlackOilFluidSystem<double>, \
+                                        Dune::CpGrid, \
+                                        GridView, \
+                                        Mapper, \
+                                        Dune::CartesianIndexMapper<Dune::CpGrid>>; \
+    template InitialStateComputer<BlackOilFluidSystem<double>, \
+                                  Dune::CpGrid, \
+                                  GridView, \
+                                  Mapper, \
+                                  Dune::CartesianIndexMapper<Dune::CpGrid>>::\
+        InitialStateComputer(MatLaw&, \
+                             const EclipseState&, \
+                             const Dune::CpGrid&, \
+                             const GridView&, \
+                             const Dune::CartesianIndexMapper<Dune::CpGrid>&, \
+                             const double, \
+                             const int, \
+                             const bool);
 
+using GridView = Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>;
+using Mapper = Dune::MultipleCodimMultipleGeomTypeMapper<GridView>;
+INSTANCE_COMP(GridView, Mapper)
+
+#if HAVE_DUNE_FEM
+using GridViewFem = Dune::Fem::GridPart2GridViewImpl<
+                                        Dune::Fem::AdaptiveLeafGridPart<
+                                            Dune::CpGrid,
+                                            Dune::PartitionIteratorType(4),
+                                            false>>;
+using MapperFem = Dune::MultipleCodimMultipleGeomTypeMapper<GridViewFem>;
+INSTANCE_COMP(GridViewFem, MapperFem)
+#endif // HAVE_DUNE_FEM
 
 } // namespace DeckDependent
 
@@ -103,7 +86,7 @@ namespace Details {
 
     using MatLaw = EclMaterialLawManager<ThreePhaseMaterialTraits<double,0,1,2>>;
     template class PhaseSaturations<MatLaw,BlackOilFluidSystem<double>,
-                                    EquilReg,size_t>;
+                                    EquilReg,std::size_t>;
 
     template std::pair<double,double> cellZMinMax(const Dune::cpgrid::Entity<0>& element);
 }

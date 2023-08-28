@@ -28,17 +28,19 @@
 #ifndef EWOMS_ECL_GENERIC_TRACER_MODEL_HH
 #define EWOMS_ECL_GENERIC_TRACER_MODEL_HH
 
+#include <dune/istl/bcrsmatrix.hh>
+
 #include <opm/grid/common/CartesianIndexMapper.hpp>
-#include <opm/common/ErrorMacros.hpp>
+
 #include <opm/models/blackoil/blackoilmodel.hh>
 
 #include <opm/simulators/linalg/matrixblock.hh>
 
-#include <dune/istl/bcrsmatrix.hh>
-
 #include <array>
+#include <cstddef>
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -96,10 +98,10 @@ protected:
      * \brief Initialize all internal data structures needed by the tracer module
      */
     void doInit(bool rst,
-                size_t numGridDof,
-                size_t gasPhaseIdx,
-                size_t oilPhaseIdx,
-                size_t waterPhaseIdx);
+                std::size_t numGridDof,
+                std::size_t gasPhaseIdx,
+                std::size_t oilPhaseIdx,
+                std::size_t waterPhaseIdx);
 
     bool linearSolve_(const TracerMatrix& M, TracerVector& x, TracerVector& b);
 

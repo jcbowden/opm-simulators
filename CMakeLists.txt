@@ -31,6 +31,8 @@ option(USE_CHOW_PATEL_ILU_GPU "Run iterative ILU decomposition on GPU? Requires 
 option(USE_CHOW_PATEL_ILU_GPU_PARALLEL "Try to use more parallelism on the GPU during the iterative ILU decomposition? Requires USE_CHOW_PATEL_ILU_GPU" OFF)
 option(BUILD_FLOW_ALU_GRID "Build flow blackoil with alu grid" OFF)
 option(USE_DAMARIS_LIB "Use the Damaris library for asynchronous I/O?" OFF)
+option(USE_BDA_BRIDGE "Enable the BDA bridge (GPU/AMGCL solvers)" ON)
+option(USE_TRACY_PROFILER "Enable tracy profiling" OFF)
 
 # The following was copied from CMakeLists.txt in opm-common.
 # TODO: factor out the common parts in opm-common and opm-simulator as a cmake module
@@ -102,6 +104,10 @@ if(USE_MPI)
   set(HDF5_PREFER_PARALLEL TRUE)
 endif()
 
+if(USE_BDA_BRIDGE)
+  set(COMPILE_BDA_BRIDGE 1)
+endif()
+
 # not the same location as most of the other projects? this hook overrides
 macro (dir_hook)
 endmacro (dir_hook)
@@ -170,7 +176,6 @@ endif()
 
 if(CUDA_FOUND)
   set(HAVE_CUDA 1)
-  set(COMPILE_BDA_BRIDGE 1)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
 
@@ -182,7 +187,6 @@ if(OpenCL_FOUND)
   find_file(CL2_HPP CL/cl2.hpp HINTS ${OpenCL_INCLUDE_DIRS})
   if(CL2_HPP)
     set(HAVE_OPENCL 1)
-    set(COMPILE_BDA_BRIDGE 1)
     include_directories(${OpenCL_INCLUDE_DIRS})
     find_file(OPENCL_HPP CL/opencl.hpp HINTS ${OpenCL_INCLUDE_DIRS})
     if(OPENCL_HPP)
@@ -216,7 +220,6 @@ endif()
 find_package(amgcl)
 if(amgcl_FOUND)
   set(HAVE_AMGCL 1)
-  set(COMPILE_BDA_BRIDGE 1)
   # Linking to target angcl::amgcl drags in OpenMP and -fopenmp as a compile
   # flag. With that nvcc fails as it does not that flag.
   # Hence we set AMGCL_INCLUDE_DIRS.
@@ -228,7 +231,6 @@ if(OpenCL_FOUND)
   find_package(VexCL)
   if(VexCL_FOUND)
     set(HAVE_VEXCL 1)
-    set(COMPILE_BDA_BRIDGE 1)
     # generator expressions in vexcl do not seem to work and therefore
     # we cannot use the imported target. Hence we exract the needed info
     # from the targets
@@ -256,6 +258,12 @@ macro (config_hook)
   if(NOT fmt_FOUND)
     add_definitions(-DFMT_HEADER_ONLY)
     list(APPEND EXTRA_INCLUDES SYSTEM ${PROJECT_SOURCE_DIR}/external/fmtlib/include)
+  endif()
+  if(USE_TRACY_PROFILER AND Tracy_FOUND)
+    set(USE_TRACY 1)
+    list(APPEND opm-simulators_LIBRARIES Tracy::TracyClient)
+  else()
+    set(USE_TRACY)
   endif()
   include_directories(${EXTRA_INCLUDES})
 
@@ -287,14 +295,12 @@ macro (files_hook)
     else()
       if(rocsparse_FOUND AND rocblas_FOUND)
         set(HAVE_ROCSPARSE 1)
-        set(COMPILE_BDA_BRIDGE 1)
       else()
         unset(HAVE_ROCSPARSE)
       endif()
     endif()
     if(ROCALUTION_FOUND)
       set(HAVE_ROCALUTION 1)
-      set(COMPILE_BDA_BRIDGE 1)
     endif()
   endif()
   if(MPI_FOUND AND HDF5_FOUND AND NOT HDF5_IS_PARALLEL)
@@ -317,8 +323,8 @@ endmacro (files_hook)
 
 macro (tests_hook)
 endmacro (tests_hook)
- 
-    
+
+
 # all setup common to the OPM library modules is done here
 include (OpmLibMain)
 
@@ -559,12 +565,6 @@ foreach(OBJ ${FLOW_VARIANT_MODELS})
   set_property(TARGET flow_lib${OBJ} PROPERTY EXCLUDE_FROM_ALL ${FLOW_VARIANTS_DEFAULT_ENABLE_IF})
 endforeach()
 
-add_library(flow_libblackoil_poly OBJECT flow/flow_ebos_blackoil_poly.cpp)
-if(TARGET fmt::fmt)
-  target_link_libraries(flow_libblackoil_poly fmt::fmt)
- endif()
-set_property(TARGET flow_libblackoil_poly PROPERTY EXCLUDE_FROM_ALL ${FLOW_POLY_ONLY_DEFAULT_ENABLE_IF})
-
 opm_add_test(flow
   ONLY_COMPILE
   ALWAYS_ENABLE
@@ -577,17 +577,15 @@ opm_add_test(flow
   $<TARGET_OBJECTS:moduleVersion>
   )
 
-opm_add_test(flow_poly
+opm_add_test(flow_blackoil_polyhedralgrid
   ONLY_COMPILE
   ALWAYS_ENABLE
   DEFAULT_ENABLE_IF ${FLOW_POLY_ONLY_DEFAULT_ENABLE_IF}
   DEPENDS opmsimulators
   LIBRARIES opmsimulators
   SOURCES
-  flow/flow_blackoil_poly.cpp
-  $<TARGET_OBJECTS:flow_libblackoil_poly>
+  flow/flow_blackoil_polyhedralgrid.cpp
   $<TARGET_OBJECTS:moduleVersion>)
-target_compile_definitions(flow_poly PRIVATE USE_POLYHEDRALGRID)
 
 opm_add_test(flow_distribute_z
   ONLY_COMPILE
@@ -608,7 +606,7 @@ if(dune-alugrid_FOUND)
     set(FLOW_ALUGRID_ONLY_DEFAULT_ENABLE_IF "TRUE")
   endif()
 
-  opm_add_test(flow_alugrid
+  opm_add_test(flow_blackoil_alugrid
     ONLY_COMPILE
     ALWAYS_ENABLE
     DEFAULT_ENABLE_IF ${FLOW_ALUGRID_ONLY_DEFAULT_ENABLE_IF}
@@ -617,7 +615,6 @@ if(dune-alugrid_FOUND)
     SOURCES
     flow/flow_blackoil_alugrid.cpp
     $<TARGET_OBJECTS:moduleVersion>)
-  target_compile_definitions(flow_alugrid PRIVATE USE_ALUGRID)
 endif()
 
 if (BUILD_FLOW)
@@ -641,7 +638,9 @@ add_custom_target(extra_test ${CMAKE_CTEST_COMMAND} -C ExtraTests)
 if(CUDA_FOUND)
   target_link_libraries( opmsimulators PUBLIC ${CUDA_cusparse_LIBRARY} )
   target_link_libraries( opmsimulators PUBLIC ${CUDA_cublas_LIBRARY} )
-  set_tests_properties(cusparseSolver PROPERTIES LABELS gpu_cuda)
+  if(USE_BDA_BRIDGE)
+    set_tests_properties(cusparseSolver PROPERTIES LABELS gpu_cuda)
+  endif()
 
   # CUISTL
   set_tests_properties(cusparse_safe_call
@@ -658,25 +657,27 @@ if(CUDA_FOUND)
                        PROPERTIES LABELS gpu_cuda)
 endif()
 
-if(OpenCL_FOUND)
-  target_link_libraries( opmsimulators PUBLIC ${OpenCL_LIBRARIES} )
-  set_tests_properties(openclSolver solvetransposed3x3 csrToCscOffsetMap
-                       PROPERTIES LABELS gpu_opencl)
-endif()
+if(USE_BDA_BRIDGE)
+  if(OpenCL_FOUND)
+    target_link_libraries( opmsimulators PUBLIC ${OpenCL_LIBRARIES} )
+    set_tests_properties(openclSolver solvetransposed3x3 csrToCscOffsetMap
+                         PROPERTIES LABELS gpu_opencl)
+  endif()
 
-if(ROCALUTION_FOUND)
-  target_include_directories(opmsimulators PUBLIC ${rocalution_INCLUDE_DIR}/rocalution)
-  set_tests_properties(rocalutionSolver PROPERTIES LABELS gpu_rocm)
-endif()
+  if(ROCALUTION_FOUND)
+    target_include_directories(opmsimulators PUBLIC ${rocalution_INCLUDE_DIR}/rocalution)
+    set_tests_properties(rocalutionSolver PROPERTIES LABELS gpu_rocm)
+  endif()
 
-if(rocsparse_FOUND AND rocblas_FOUND)
-  target_link_libraries( opmsimulators PUBLIC roc::rocsparse )
-  target_link_libraries( opmsimulators PUBLIC roc::rocblas )
-  set_tests_properties(rocsparseSolver PROPERTIES LABELS gpu_rocm)
-endif()
+  if(rocsparse_FOUND AND rocblas_FOUND)
+    target_link_libraries( opmsimulators PUBLIC roc::rocsparse )
+    target_link_libraries( opmsimulators PUBLIC roc::rocblas )
+    set_tests_properties(rocsparseSolver PROPERTIES LABELS gpu_rocm)
+  endif()
 
-if(VexCL_FOUND)
-  target_link_libraries( opmsimulators PUBLIC OPM::VexCL::OpenCL )
+  if(VexCL_FOUND)
+    target_link_libraries( opmsimulators PUBLIC OPM::VexCL::OpenCL )
+  endif()
 endif()
 
 if(Damaris_FOUND)
@@ -685,5 +686,3 @@ endif()
 
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
   FILES_MATCHING PATTERN "*.1")
-
-

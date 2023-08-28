@@ -28,18 +28,18 @@
 #ifndef EWOMS_ECL_TRANSMISSIBILITY_HH
 #define EWOMS_ECL_TRANSMISSIBILITY_HH
 
-#include <opm/grid/common/CartesianIndexMapper.hpp>
-
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
 
+#include <opm/grid/common/CartesianIndexMapper.hpp>
+
 #include <array>
-#include <map>
-#include <tuple>
-#include <vector>
-#include <unordered_map>
 #include <functional>
+#include <map>
 #include <cstdint>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 
 namespace Opm {
 
@@ -192,12 +192,9 @@ protected:
      *
      * \param cartesianToCompressed Vector containing the compressed index (or -1 for inactive
      *                              cells) as the element at the cartesian index.
-     * \return Two vector of NNCs (scaled by EDITNNC). The first one are the NNCs that have been applied
-     *         and the second the NNCs not resembled by faces of the grid. NNCs specified for
-     *         inactive cells are omitted in these vectors.
+     * \return Nothing.
      */
-    std::tuple<std::vector<NNCdata>, std::vector<NNCdata>>
-    applyNncToGridTrans_(const std::unordered_map<std::size_t,int>& cartesianToCompressed);
+    void applyNncToGridTrans_(const std::unordered_map<std::size_t,int>& cartesianToCompressed);
 
     /// \brief Multiplies the grid transmissibilities according to EDITNNC.
     void applyEditNncToGridTrans_(const std::unordered_map<std::size_t,int>& globalToLocal);

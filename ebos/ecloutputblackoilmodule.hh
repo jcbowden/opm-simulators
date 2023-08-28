@@ -27,6 +27,10 @@
 #ifndef EWOMS_ECL_OUTPUT_BLACK_OIL_MODULE_HH
 #define EWOMS_ECL_OUTPUT_BLACK_OIL_MODULE_HH
 
+#include <dune/common/fvector.hh>
+
+#include <ebos/eclgenericoutputblackoilmodule.hh>
+
 #include <opm/common/Exceptions.hpp>
 #include <opm/common/TimingMacros.hpp>
 #include <opm/common/OpmLog/OpmLog.hpp>
@@ -44,10 +48,6 @@
 #include <opm/output/data/Cells.hpp>
 #include <opm/output/eclipse/EclipseIO.hpp>
 #include <opm/output/eclipse/Inplace.hpp>
-
-#include <ebos/eclgenericoutputblackoilmodule.hh>
-
-#include <dune/common/fvector.hh>
 
 #include <algorithm>
 #include <array>
@@ -1241,7 +1241,7 @@ private:
 
     void createLocalRegion_(std::vector<int>& region)
     {
-        size_t elemIdx = 0;
+        std::size_t elemIdx = 0;
         for (const auto& elem : elements(simulator_.gridView())) {
             if (elem.partitionType() != Dune::InteriorEntity)
                 region[elemIdx] = 0;

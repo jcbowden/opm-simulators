@@ -30,9 +30,16 @@
 
 #include <ebos/eclgenerictracermodel.hh>
 
+#include <opm/common/OpmLog/OpmLog.hpp>
+
 #include <opm/models/utils/propertysystem.hh>
+
 #include <opm/simulators/utils/VectorVectorDataHandle.hpp>
 
+#include <array>
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -126,7 +133,7 @@ public:
 
     void prepareTracerBatches()
     {
-        for (size_t tracerIdx=0; tracerIdx<this->tracerPhaseIdx_.size(); ++tracerIdx) {
+        for (std::size_t tracerIdx = 0; tracerIdx < this->tracerPhaseIdx_.size(); ++tracerIdx) {
             if (this->tracerPhaseIdx_[tracerIdx] == FluidSystem::waterPhaseIdx) {
                 if (! FluidSystem::phaseIsActive(FluidSystem::waterPhaseIdx)){
                     throw std::runtime_error("Water tracer specified for non-water fluid system:" + this->name(tracerIdx));
@@ -388,7 +395,7 @@ protected:
         for (const auto& elem : elements(simulator_.gridView())) {
             elemCtx.updateStencil(elem);
 
-            size_t I = elemCtx.globalSpaceIndex(/*dofIdx=*/ 0, /*timeIdx=*/0);
+            std::size_t I = elemCtx.globalSpaceIndex(/*dofIdx=*/ 0, /*timeIdx=*/0);
 
             if (elem.partitionType() != Dune::InteriorEntity)
             {
@@ -412,13 +419,13 @@ protected:
                     * extrusionFactor;
             Scalar dt = elemCtx.simulator().timeStepSize();
 
-            size_t I1 = elemCtx.globalSpaceIndex(/*dofIdx=*/ 0, /*timeIdx=*/1);
+            std::size_t I1 = elemCtx.globalSpaceIndex(/*dofIdx=*/ 0, /*timeIdx=*/1);
 
             for (auto& tr : tbatch) {
                 this->assembleTracerEquationVolume(tr, elemCtx, scvVolume, dt, I, I1);
             }
 
-            size_t numInteriorFaces = elemCtx.numInteriorFaces(/*timIdx=*/0);
+            std::size_t numInteriorFaces = elemCtx.numInteriorFaces(/*timIdx=*/0);
             for (unsigned scvfIdx = 0; scvfIdx < numInteriorFaces; scvfIdx++) {
                 const auto& face = elemCtx.stencil(0).interiorFace(scvfIdx);
                 unsigned j = face.exteriorIndex();
@@ -487,8 +494,9 @@ protected:
                 dx[tIdx] = 0.0;
 
             bool converged = this->linearSolveBatchwise_(*tr.mat, dx, tr.residual_);
-            if (!converged)
-                std::cout << "### Tracer model: Warning, linear solver did not converge. ###" << std::endl;
+            if (!converged) {
+                OpmLog::warning("### Tracer model: Linear solver did not converge. ###");
+            }
 
             for (int tIdx = 0; tIdx < tr.numTracer(); ++tIdx) {
                 tr.concentration_[tIdx] -= dx[tIdx];

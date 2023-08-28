@@ -27,21 +27,25 @@
 #ifndef EWOMS_ECL_BASE_VANGUARD_HH
 #define EWOMS_ECL_BASE_VANGUARD_HH
 
-#include <opm/models/io/basevanguard.hh>
-#include <opm/models/utils/propertysystem.hh>
-#include <opm/models/utils/parametersystem.hh>
-#include <opm/models/discretization/common/fvbaseproperties.hh>
 #include <ebos/eclgenericvanguard.hh>
 
 #include <opm/grid/common/GridEnums.hpp>
 #include <opm/grid/common/CartesianIndexMapper.hpp>
+
 #include <opm/input/eclipse/EclipseState/Aquifer/NumericalAquifer/NumericalAquiferCell.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+
+#include <opm/models/discretization/common/fvbaseproperties.hh>
+#include <opm/models/io/basevanguard.hh>
+#include <opm/models/utils/parametersystem.hh>
+#include <opm/models/utils/propertysystem.hh>
+
 #include <opm/simulators/flow/BlackoilModelParametersEbos.hpp>
 
 #include <array>
+#include <cstddef>
 #include <optional>
-#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 namespace Opm {
@@ -500,7 +504,7 @@ protected:
 
     void updateCartesianToCompressedMapping_()
     {
-        size_t num_cells = asImp_().grid().leafGridView().size(0);
+        std::size_t num_cells = asImp_().grid().leafGridView().size(0);
         is_interior_.resize(num_cells);
         
         ElementMapper elemMapper(this->gridView(), Dune::mcmgElementLayout());

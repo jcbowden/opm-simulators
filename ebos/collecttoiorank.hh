@@ -23,19 +23,20 @@
 #ifndef EWOMS_COLLECT_TO_IO_RANK_HH
 #define EWOMS_COLLECT_TO_IO_RANK_HH
 
+#include <opm/input/eclipse/Schedule/Well/WellTestState.hpp>
+
+#include <opm/grid/common/p2pcommunicator.hh>
+
 #include <opm/output/data/Aquifer.hpp>
 #include <opm/output/data/Cells.hpp>
 #include <opm/output/data/Groups.hpp>
 #include <opm/output/data/Solution.hpp>
 #include <opm/output/data/Wells.hpp>
 
-#include <opm/input/eclipse/Schedule/Well/WellTestState.hpp>
-
-#include <opm/grid/common/p2pcommunicator.hh>
-
-#include <ebos/eclinterregflows.hh>
+#include <opm/simulators/flow/EclInterRegFlows.hpp>
 
 #include <array>
+#include <cstddef>
 #include <map>
 #include <set>
 #include <string>
@@ -133,7 +134,7 @@ public:
     bool doesNeedReordering() const
     { return needsReordering;}
 
-    size_t numCells () const
+    std::size_t numCells () const
     { return globalCartesianIndex_.size(); }
 
     const std::vector<int>& globalRanks() const

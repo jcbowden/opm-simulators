@@ -51,7 +51,6 @@
 #include <opm/simulators/utils/DeferredLoggingErrorHelpers.hpp>
 #include <opm/simulators/utils/ParallelCommunication.hpp>
 #include <opm/simulators/wells/BlackoilWellModel.hpp>
-#include <opm/simulators/wells/WellConnectionAuxiliaryModule.hpp>
 
 #include <dune/common/timer.hh>
 
@@ -1175,8 +1174,6 @@ namespace Opm {
         double drMaxRel() const { return param_.dr_max_rel_; }
         double maxResidualAllowed() const { return param_.max_residual_allowed_; }
         double linear_solve_setup_time_;
-
-        SimulatorReportSingle local_reports_accumulated_; //!< Accumulated convergence report for subdomain solvers
 
     public:
         std::vector<bool> wasSwitched_;
