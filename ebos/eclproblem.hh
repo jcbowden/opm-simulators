@@ -182,7 +182,7 @@ class EclProblem : public GetPropType<TypeTag, Properties::BaseProblem>
     using DimMatrix = Dune::FieldMatrix<Scalar, dimWorld, dimWorld>;
 
     using EclWriterType = EclWriter<TypeTag>;
-#ifdef HAVE_DAMARIS
+#if HAVE_DAMARIS
     using DamarisWriterType = DamarisWriter<TypeTag>;
 #endif 
     using TracerModel = EclTracerModel<TypeTag>;
@@ -204,7 +204,7 @@ public:
     {
         ParentType::registerParameters();
         EclWriterType::registerParameters();
-#ifdef HAVE_DAMARIS
+#if HAVE_DAMARIS
         DamarisWriterType::registerParameters();
 #endif  
         VtkEclTracerModule<TypeTag>::registerParameters();
@@ -215,7 +215,7 @@ public:
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableEclOutput,
                              "Write binary output which is compatible with the commercial "
                              "Eclipse simulator");
-#ifdef HAVE_DAMARIS
+#if HAVE_DAMARIS
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutput,
                              "Write a specific variable using Damaris in a separate core");
 #endif
@@ -296,9 +296,9 @@ public:
 
         // create the ECL writer
         eclWriter_ = std::make_unique<EclWriterType>(simulator);
-#ifdef HAVE_DAMARIS
+#if HAVE_DAMARIS
         // create Damaris writer
-        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator);     
+        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator);
         enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
 #endif
         enableDriftCompensation_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableDriftCompensation);
@@ -667,6 +667,9 @@ public:
         }
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
         eclWriter_->evalSummaryState(isSubStep);
+#if HAVE_DAMARIS
+       // damarisWriter_->evalSummaryState(isSubStep);
+#endif // HAVE_DAMARIS
 
         int episodeIdx = this->episodeIndex();
 
@@ -734,7 +737,7 @@ public:
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
         
         data::Solution localCellData = {};
-#ifdef HAVE_DAMARIS
+#if HAVE_DAMARIS
         // N.B. the Damaris output has to be done before the ECL output as the ECL one 
         // does all kinds of std::move() relocation of data
         if (enableDamarisOutput_) {
@@ -751,8 +754,8 @@ public:
         // this will write all pending output to disk
         // to avoid corruption of output files
         eclWriter_.reset();
-#ifdef HAVE_DAMARIS
-        damarisWriter_.reset();  // This is a usinque_ptr method
+#if HAVE_DAMARIS
+        damarisWriter_.reset();  // This is a unique_ptr method
 #endif 
     }
 
@@ -2493,7 +2496,7 @@ private:
     bool enableEclOutput_;
     std::unique_ptr<EclWriterType> eclWriter_;
     
-#ifdef HAVE_DAMARIS
+#if HAVE_DAMARIS
     bool enableDamarisOutput_ = false ;
     std::unique_ptr<DamarisWriterType> damarisWriter_;
 #endif 

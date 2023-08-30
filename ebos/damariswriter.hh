@@ -28,7 +28,6 @@
 #ifndef EWOMS_DAMARIS_WRITER_HH
 #define EWOMS_DAMARIS_WRITER_HH
 
-#ifdef HAVE_DAMARIS
 #include <ebos/collecttoiorank.hh>
 #include <ebos/damarisgenericwriter.hh>
 #include <ebos/ecloutputblackoilmodule.hh>
@@ -43,6 +42,12 @@
 #include <dune/grid/common/partitionset.hh>
 
 #include <opm/common/OpmLog/OpmLog.hpp>
+
+#include <dune/grid/common/partitionset.hh>
+
+// #include <ebos/eclbasevanguard.hh>
+// #include <ebos/eclgenericwriter.hh>
+
 
 #include <limits>
 #include <stdexcept>
@@ -547,6 +552,5 @@ private:
 
 };
 } // namespace Opm
-#endif  // HAVE_DAMARIS
 
 #endif
