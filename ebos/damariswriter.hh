@@ -29,7 +29,9 @@
 #define EWOMS_DAMARIS_WRITER_HH
 
 #include <ebos/collecttoiorank.hh>
-#include <ebos/damarisgenericwriter.hh>
+#include <ebos/eclbasevanguard.hh>
+#include <ebos/eclgenericwriter.hh>
+// #include <ebos/damarisgenericwriter.hh>
 #include <ebos/ecloutputblackoilmodule.hh>
 
 #include <opm/simulators/utils/DeferredLoggingErrorHelpers.hpp>
@@ -97,7 +99,7 @@ namespace Opm {
  
  
 template <class TypeTag>
-class DamarisWriter : public DamarisGenericWriter<GetPropType<TypeTag, Properties::Grid>,
+class DamarisWriter : public EclGenericWriter<GetPropType<TypeTag, Properties::Grid>,
                                           GetPropType<TypeTag, Properties::EquilGrid>,
                                           GetPropType<TypeTag, Properties::GridView>,
                                           GetPropType<TypeTag, Properties::ElementMapper>,
@@ -114,7 +116,7 @@ class DamarisWriter : public DamarisGenericWriter<GetPropType<TypeTag, Propertie
     using Element = typename GridView::template Codim<0>::Entity;
     using ElementMapper = GetPropType<TypeTag, Properties::ElementMapper>;
     using ElementIterator = typename GridView::template Codim<0>::Iterator;
-    using BaseType = DamarisGenericWriter<Grid,EquilGrid,GridView,ElementMapper,Scalar>;
+    using BaseType = EclGenericWriter<Grid,EquilGrid,GridView,ElementMapper,Scalar>;
     
     typedef Dune::MultipleCodimMultipleGeomTypeMapper< GridView > VertexMapper;
 
