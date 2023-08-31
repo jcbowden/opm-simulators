@@ -400,6 +400,7 @@ list (APPEND PUBLIC_HEADER_FILES
   ebos/eclgenericvanguard.hh
   ebos/eclgenericwriter.hh
   ebos/eclgenericwriter_impl.hh
+  ebos/damarisgenericwriter.hh
   ebos/eclmixingratecontrols.hh
   ebos/eclmpiserializer.hh
   ebos/eclnewtonmethod.hh

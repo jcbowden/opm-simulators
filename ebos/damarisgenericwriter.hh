@@ -28,15 +28,16 @@
 #ifndef EWOMS_DAMARIS_GENERIC_WRITER_HH
 #define EWOMS_DAMARIS_GENERIC_WRITER_HH
 
-#ifdef HAVE_DAMARIS
-
-#include "collecttoiorank.hh"
+#include <ebos/collecttoiorank.hh>
 #include <ebos/ecltransmissibility.hh>
+
 #include <opm/models/parallel/tasklets.hh>
+
 #include <opm/simulators/timestepping/SimulatorReport.hpp>
 
 #include <cstddef>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -153,5 +154,5 @@ private:
 
 } // namespace Opm
 
-#endif  // #ifdef HAVE_DAMARIS
+
 #endif
