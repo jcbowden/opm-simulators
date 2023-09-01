@@ -46,10 +46,6 @@
 #include <stdexcept>
 #include <string>
 
-#if HAVE_DAMARIS
-#include <opm/simulators/utils/DamarisOutputModule.hpp>
-#endif
-
 
 namespace Opm::Properties {
 
@@ -65,16 +61,6 @@ template<class TypeTag, class MyTypeTag>
 struct EclOutputDoublePrecision {
     using type = UndefinedProperty;
 };
-#ifdef HAVE_DAMARIS
-template<class TypeTag, class MyTypeTag>
-struct EnableDamarisOutput {
-    using type = UndefinedProperty;
-};
-template<class TypeTag, class MyTypeTag>
-struct EnableDamarisOutputCollective {
-    using type = UndefinedProperty;
-};
-#endif
 template<class TypeTag, class MyTypeTag>
 struct EnableEsmry {
     using type = UndefinedProperty;
@@ -134,8 +120,8 @@ public:
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableAsyncEclOutput,
                              "Write the ECL-formated results in a non-blocking way (i.e., using a separate thread).");
 #ifdef HAVE_DAMARIS
-        EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutputCollective,
-                             "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one per Damaris core.");
+        //EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutputCollective,
+        //                     "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one per Damaris core.");
 #endif
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableEsmry,
                              "Write ESMRY file for fast loading of summary data.");
@@ -161,10 +147,6 @@ public:
                    EWOMS_GET_PARAM(TypeTag, bool, EnableEsmry))
         , simulator_(simulator)
     {
-#ifdef HAVE_DAMARIS
-        this->damarisUpdate_ = enableDamarisOutput_();
-#endif
-
         this->eclOutputModule_ = std::make_unique<EclOutputBlackOilModule<TypeTag>>
             (simulator, this->collectToIORank_);
     }
@@ -327,37 +309,13 @@ public:
         }
     }
 
-    void writeOutput(bool isSubStep)
+    void writeOutput(data::Solution& localCellData, bool isSubStep)
     {
         OPM_TIMEBLOCK(writeOutput);
 
         const int reportStepNum = simulator_.episodeIndex() + 1;
         this->prepareLocalCellData(isSubStep, reportStepNum);
         this->eclOutputModule_->outputErrorLog(simulator_.gridView().comm());
-
-#ifdef HAVE_DAMARIS
-        if (EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput)) {
-            // N.B. damarisUpdate_ should be set to true if at any time the model geometry changes
-            if (this->damarisUpdate_) {
-                const auto& gridView = simulator_.gridView();
-                const auto& interior_elements = elements(gridView, Dune::Partitions::interior);
-                const int numElements = std::distance(interior_elements.begin(), interior_elements.end());
-                Opm::DamarisOutput::setupDamarisWritingPars(simulator_.vanguard().grid().comm(), numElements);
-                const std::vector<int>& local_to_global = this->collectToIORank_.localIdxToGlobalIdxMapping();
-                damaris_write("GLOBAL_CELL_INDEX", local_to_global.data());
-                // By default we assume static grid
-                this->damarisUpdate_ = false;
-            }
-
-            if (!isSubStep) {
-                // Output the PRESSURE field
-                if (this->eclOutputModule_->getPRESSURE_ptr() != nullptr) {
-                    damaris_write("PRESSURE", (void*)this->eclOutputModule_->getPRESSURE_ptr());
-                    damaris_end_iteration();
-                }
-            }
-        }
-#endif
 
         auto localWellData = simulator_.problem().wellModel().wellData();
         auto localGroupAndNetworkData = simulator_.problem().wellModel()
@@ -372,7 +330,7 @@ public:
         const bool isFloresn = this->eclOutputModule_->hasFloresn();
         auto floresn = this->eclOutputModule_->getFloresn();
 
-        data::Solution localCellData = {};
+        // data::Solution localCellData = {};
         if (! isSubStep) {
             this->eclOutputModule_->assignToSolution(localCellData);
 
@@ -522,11 +480,6 @@ public:
 private:
     static bool enableEclOutput_()
     { return EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput); }
-
-#ifdef HAVE_DAMARIS
-    static bool enableDamarisOutput_()
-    { return EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput); }
-#endif
 
     const EclipseState& eclState() const
     { return simulator_.vanguard().eclState(); }

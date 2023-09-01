@@ -44,6 +44,7 @@
 #include <ebos/eclthresholdpressure.hh>
 #include <ebos/ecltransmissibility.hh>
 #include <ebos/eclwriter.hh>
+#include <ebos/damariswriter.hh>
 #include <ebos/ecltracermodel.hh>
 #include <ebos/FIBlackOilModel.hpp>
 #include <ebos/vtkecltracermodule.hh>
@@ -182,7 +183,9 @@ class EclProblem : public GetPropType<TypeTag, Properties::BaseProblem>
     using DimMatrix = Dune::FieldMatrix<Scalar, dimWorld, dimWorld>;
 
     using EclWriterType = EclWriter<TypeTag>;
-
+#if HAVE_DAMARIS
+    using DamarisWriterType = DamarisWriter<TypeTag>;
+#endif 
     using TracerModel = EclTracerModel<TypeTag>;
     using DirectionalMobilityPtr = Opm::Utility::CopyablePtr<DirectionalMobility<TypeTag, Evaluation>>;
 
@@ -202,6 +205,9 @@ public:
     {
         ParentType::registerParameters();
         EclWriterType::registerParameters();
+#if HAVE_DAMARIS
+        DamarisWriterType::registerParameters();
+#endif  
         VtkEclTracerModule<TypeTag>::registerParameters();
 
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableWriteAllSolutions,
@@ -291,7 +297,11 @@ public:
 
         // create the ECL writer
         eclWriter_ = std::make_unique<EclWriterType>(simulator);
-
+#if HAVE_DAMARIS
+        // create Damaris writer
+        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator);
+        enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
+#endif
         enableDriftCompensation_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableDriftCompensation);
 
         enableEclOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput);
@@ -724,8 +734,20 @@ public:
         ParentType::writeOutput(verbose);
 
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
-        if (enableEclOutput_){
-            eclWriter_->writeOutput(isSubStep);
+        
+        // The localCellData object passed into the writeOutput() 
+        // methods and will be populated by the DamarisWriter method, 
+        // if Damaris is being used, and then reused by the EclWriter method.
+        data::Solution localCellData = {};  
+#if HAVE_DAMARIS
+        // N.B. the Damaris output has to be done before the ECL output as the ECL one 
+        // does all kinds of std::move() relocation of data
+        if (enableDamarisOutput_) {
+            damarisWriter_->writeOutput(localCellData, isSubStep) ;
+        }
+#endif 
+         if (enableEclOutput_){
+            eclWriter_->writeOutput(localCellData, isSubStep);
         }
     }
 
@@ -734,6 +756,9 @@ public:
         // this will write all pending output to disk
         // to avoid corruption of output files
         eclWriter_.reset();
+#if HAVE_DAMARIS
+        damarisWriter_.reset();  // This is a unique_ptr method and possibly not needed for the damarisWriter object
+#endif 
     }
 
 
@@ -2522,6 +2547,11 @@ private:
 
     bool enableEclOutput_;
     std::unique_ptr<EclWriterType> eclWriter_;
+    
+#if HAVE_DAMARIS
+    bool enableDamarisOutput_ = false ;
+    std::unique_ptr<DamarisWriterType> damarisWriter_;
+#endif 
 
     PffGridVector<GridView, Stencil, PffDofData_, DofMapper> pffDofData_;
     TracerModel tracerModel_;
