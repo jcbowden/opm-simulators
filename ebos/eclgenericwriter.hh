@@ -107,6 +107,12 @@ public:
     {
         return outputNnc_;
     }
+    
+    /*const CollectDataToIORankType& returnLocalToGlobal( void )
+    {
+        // return (this->collectToIORank_.localIdxToGlobalIdxMapping()) ;
+         return (this->collectToIORank_) ;
+    }*/
 
 protected:
     const TransmissibilityType& globalTrans() const;

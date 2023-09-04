@@ -54,29 +54,36 @@ initializeDamaris(MPI_Comm comm, int mpiRank, std::string outputDir, bool enable
         myMod.SaveXMLStringToFile(damaris_xml_filename_str);
     }
 
-    int damaris_err;
+    int dam_err;
 
     /* Get the name of the Damaris input file from an environment variable if available */
     const char* cs_damaris_xml_file = getenv("FLOW_DAMARIS_XML_FILE");
     if (cs_damaris_xml_file != NULL) {
         std::cout << "INFO: initializing Damaris from environment variable FLOW_DAMARIS_XML_FILE: "
                   << cs_damaris_xml_file << std::endl;
-        damaris_err = damaris_initialize(cs_damaris_xml_file, MPI_COMM_WORLD);
-        if (damaris_err != DAMARIS_OK) {
-            std::cerr << "ERROR: damaris_initialize() error via FLOW_DAMARIS_XML_FILE=" << cs_damaris_xml_file
-                      << std::endl;
+      //  OpmLog::info(fmt::format("INFO: DamarisOutput::initializeDamaris()       : ( rank:{}) initializing Damaris from environment variable FLOW_DAMARIS_XML_FILE: {}  ",  mpiRank, cs_damaris_xml_file));
+        
+        dam_err = damaris_initialize(cs_damaris_xml_file, comm);
+        if (dam_err != DAMARIS_OK) {
+            //std::cerr << "ERROR: damaris_initialize() error via FLOW_DAMARIS_XML_FILE=" << cs_damaris_xml_file
+            //          << std::endl;
+            OpmLog::error(fmt::format("ERORR: DamarisOutput::initializeDamaris()       : ( rank:{}) damaris_initialize(...),  error via FLOW_DAMARIS_XML_FILE: {} Error: {}  ",  mpiRank,cs_damaris_xml_file, damaris_error_string(dam_err) ));
         }
     } else {
-        std::cout << "INFO: initializing Damaris using internally built file:" << damaris_xml_filename_str << std::endl;
-        damaris_err = damaris_initialize(damaris_xml_filename_str.c_str(), comm);
-        if (damaris_err != DAMARIS_OK) {
-            std::cerr << "ERROR: damaris_initialize() error via built file:" << std::endl << myMod.GetConfigString();
+         std::cout << "INFO: initializing Damaris using internally built file:" << damaris_xml_filename_str << std::endl;
+        //OpmLog::info(fmt::format("INFO: DamarisOutput::initializeDamaris()       : ( rank:{}) initializing Damaris using internally built file: {}  ",  mpiRank, cs_damaris_xml_file));
+        
+        dam_err = damaris_initialize(damaris_xml_filename_str.c_str(), comm);
+        if (dam_err != DAMARIS_OK) {
+            // std::cerr << "ERROR: damaris_initialize() error via built file:" << std::endl << myMod.GetConfigString();
+            OpmLog::error(fmt::format("ERORR: DamarisOutput::initializeDamaris()       : ( rank:{}) damaris_initialize(...),  error via FLOW_DAMARIS_XML_FILE: {} Error: {}  ",  mpiRank, myMod.GetConfigString(), damaris_error_string(dam_err) ));
         }
     }
 }
 
+
 void
-setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid)
+setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid, std::vector<unsigned long long>& elements_rank_offsets)
 {
     int damaris_err = DAMARIS_OK;
 
@@ -84,7 +91,7 @@ setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local
     const int rank = comm.rank();
 
     std::vector<unsigned long long> elements_rank_sizes(nranks); // one for each rank -- to be gathered from each client rank
-    std::vector<unsigned long long> elements_rank_offsets(nranks); // one for each rank, first one 0 -- to be computed - Probably could use MPI_Scan()!
+    // std::vector<unsigned long long> elements_rank_offsets(nranks); // one for each rank, first one 0 -- to be computed - Probably could use MPI_Scan()!
 
     // n_elements_local_grid should be the full model size
     const unsigned long long n_elements_local = n_elements_local_grid;
@@ -132,15 +139,21 @@ setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local
     // This is used so that output functionality (e.g. HDF5Store) knows global offsets of the data of the ranks
     int64_t temp_int64_t[1];
     temp_int64_t[0] = static_cast<int64_t>(elements_rank_offsets[rank]);
-    damaris_err = damaris_set_position("PRESSURE", temp_int64_t);
+    /*damaris_err = damaris_set_position("PRESSURE", temp_int64_t);
     if (damaris_err != DAMARIS_OK && rank == 0) {
         OpmLog::error("Damaris library produced an error result for "
                       "damaris_set_position(\"PRESSURE\", temp_int64_t);");
-    }
+    }*/
     damaris_err = damaris_set_position("GLOBAL_CELL_INDEX", temp_int64_t);
     if (damaris_err != DAMARIS_OK && rank == 0) {
         OpmLog::error("Damaris library produced an error result for "
                       "damaris_set_position(\"GLOBAL_CELL_INDEX\", temp_int64_t);");
     }
+    /*
+    damaris_err = damaris_set_position("MPI_RANK", temp_int64_t);
+    if (damaris_err != DAMARIS_OK && rank == 0) {
+        OpmLog::error("Damaris library produced an error result for "
+                      "damaris_set_position(\"PRESSURE\", temp_int64_t);");
+    }*/
 }
 } // namespace Opm::DamarisOutput

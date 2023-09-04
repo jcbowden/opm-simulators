@@ -36,6 +36,6 @@ namespace Opm::DamarisOutput
  // Initialize Damaris by filling in th XML file and stroring it in the chosed directory
  void initializeDamaris(MPI_Comm comm, int mpiRank, std::string OutputDir, bool enableDamarisOutputCollective);
  // Setup Damaris Parameters for writing e.g., grid size and communicator to output "PRESSURE" field
- void setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid);
+ void setupDamarisWritingPars(Parallel::Communication comm, const int n_elements_local_grid, std::vector<unsigned long long>& elements_rank_offsets);
 
 } // namespace Opm::DamarisOutput

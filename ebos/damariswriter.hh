@@ -29,17 +29,17 @@
 #define EWOMS_DAMARIS_WRITER_HH
 
 #include <ebos/collecttoiorank.hh>
-// #include <ebos/eclbasevanguard.hh>
+#include <ebos/eclbasevanguard.hh>
 // #include <ebos/eclgenericwriter.hh>
-// #include <ebos/damarisgenericwriter.hh>
+#include <ebos/damarisgenericwriter.hh>
 #include <ebos/ecloutputblackoilmodule.hh>
 
 #include <opm/simulators/utils/DeferredLoggingErrorHelpers.hpp>
-// #include <opm/simulators/utils/ParallelRestart.hpp>
+#include <opm/simulators/utils/ParallelRestart.hpp>
 
 #include <opm/input/eclipse/Units/UnitSystem.hpp>
 
-// #include <opm/output/eclipse/RestartValue.hpp>
+#include <opm/output/eclipse/RestartValue.hpp>
 
 #include <dune/grid/common/partitionset.hh>
 
@@ -89,10 +89,25 @@ namespace Opm {
  */
  
 template <class TypeTag>
-class DamarisWriter 
+class DamarisWriter : public EclGenericWriter<GetPropType<TypeTag, Properties::Grid>,
+                                          GetPropType<TypeTag, Properties::EquilGrid>,
+                                          GetPropType<TypeTag, Properties::GridView>,
+                                          GetPropType<TypeTag, Properties::ElementMapper>,
+                                          GetPropType<TypeTag, Properties::Scalar>
+                                          >
 {
+    using GridView = GetPropType<TypeTag, Properties::GridView>;
+    using Grid = GetPropType<TypeTag, Properties::Grid>;
+    using EquilGrid = GetPropType<TypeTag, Properties::EquilGrid>;
+    
     using Simulator = GetPropType<TypeTag, Properties::Simulator>;
     using ElementContext = GetPropType<TypeTag, Properties::ElementContext>;
+    using CollectDataToIORankType = CollectDataToIORank<Grid,EquilGrid,GridView>;
+    
+    using ElementMapper = GetPropType<TypeTag, Properties::ElementMapper>;
+    using Scalar = GetPropType<TypeTag, Properties::Scalar>;
+    using BaseType = EclGenericWriter<Grid,EquilGrid,GridView,ElementMapper,Scalar>;
+    // using BaseType = DamarisGenericWriter<Grid,EquilGrid,GridView,ElementMapper,Scalar>;
    // using Scalar = GetPropType<TypeTag, Properties::Scalar>;
 public:
     static void registerParameters()
@@ -105,8 +120,24 @@ public:
     // The Simulator object should preferably have been const - the
     // only reason that is not the case is due to the SummaryState
     // object owned deep down by the vanguard.
-    DamarisWriter(Simulator& simulator)
-        : simulator_(simulator)
+    // DamarisWriter(Simulator& simulator, const CollectDataToIORankType & localtoglobal)
+    DamarisWriter(Simulator& simulator) 
+             : BaseType(simulator.vanguard().schedule(),
+                   simulator.vanguard().eclState(),
+                   simulator.vanguard().summaryConfig(),
+                   simulator.vanguard().grid(),
+                   ((simulator.vanguard().grid().comm().rank() == 0)
+                    ? &simulator.vanguard().equilGrid()
+                    : nullptr),
+                   simulator.vanguard().gridView(),
+                   simulator.vanguard().cartesianIndexMapper(),
+                   ((simulator.vanguard().grid().comm().rank() == 0)
+                    ? &simulator.vanguard().equilCartesianIndexMapper()
+                    : nullptr),
+                   EWOMS_GET_PARAM(TypeTag, bool, EnableAsyncEclOutput),
+                   EWOMS_GET_PARAM(TypeTag, bool, EnableEsmry)),
+              
+         simulator_(simulator)
     {
         this->damarisUpdate_ = true ;
         
@@ -143,8 +174,6 @@ public:
         // auto localAquiferData = simulator_.problem().aquiferModel().aquiferData();
         // auto localWellTestState = simulator_.problem().wellModel().wellTestState();
 
-        
-        
         if (! isSubStep) {
             if (localCellData.size() == 0) {
                 this->damarisOutputModule_->assignToSolution(localCellData);
@@ -156,14 +185,33 @@ public:
                 // which define sizes of the Damaris variables, per-rank and globally (over all ranks).
                 // Also sets the offsets to where a ranks array data sits within the global array. 
                 // This is usefull for HDF5 output and for defining distributed arrays in Dask.
-                Opm::DamarisOutput::setupDamarisWritingPars(simulator_.vanguard().grid().comm(), numElements_);
+                Opm::DamarisOutput::setupDamarisWritingPars(simulator_.vanguard().grid().comm(), numElements_, elements_rank_offsets_);
                 
                 // sets data for non-time-varying variables MPI_RANK and GLOBAL_CELL_INDEX
                 SetGlobalIndexForDamaris() ; 
                 
                 // Adds all mesh variables (x,y,z, type, offsets and coords) and sets damarisUpdate_  to false
                 this->writeDamarisGridOutput(isSubStep) ;
+                
+                this->damarisUpdate_ = false;
             }
+            
+            // Call damaris_set_position() for all available variables
+            // There is an assumption that all variables are the same size and that they are all double precision float 
+            // see initDamarisTemplateXmlFile.cpp for the Damaris XML descriptions.
+            for ( auto damVar : localCellData ) {
+                // std::map<std::string, data::CellData>
+                const std::string name = damVar.first ;
+                if (name == "PRESSURE") {
+                    int64_t temp_int64_t[1];
+                    temp_int64_t[0] = static_cast<int64_t>(this->elements_rank_offsets_[rank_]);
+                    dam_err_ = damaris_set_position(name.c_str(), temp_int64_t);
+                    if (dam_err_ != DAMARIS_OK && rank_ == 0) {
+                        OpmLog::error(fmt::format("ERORR: damariswriter::writeOutput()       : ( rank:{}) damaris_set_position({}, ...), Damaris Error: {}  ",  rank_, name, damaris_error_string(dam_err_) ));
+                    }
+                }
+            }
+            
             
             // Call damaris_write() for available variables.
             // Currently restricting this to just the PRESSURE variable
@@ -175,11 +223,11 @@ public:
               
               if (name == "PRESSURE") {
                   if (dataCol.data.data() != nullptr) {
-                      std::cout << " Calling: damaris_write( "  << name << " , ...)" <<  std::endl ;  // dataCol.data().size()
+                      // std::cout << " Calling: damaris_write( "  << name << " , ...)" <<  std::endl ;  // dataCol.data().size()
                       dam_err_ = damaris_write(name.c_str(), (void*) dataCol.data.data() ) ;
                       if (dam_err_ != DAMARIS_OK) {
-                          std::cerr << "ERROR rank =" << rank_ << " : damariswriter::writeOutput() : damaris_write()" 
-                          << ", Damaris error = " <<  damaris_error_string(dam_err_) << std::endl ;
+                          OpmLog::error(fmt::format("ERORR: damariswriter::writeOutput()       : ( rank:{}) damaris_write({}, ...), Damaris Error: {}  ",  rank_, name, damaris_error_string(dam_err_) ));
+                    
                       }
                   }
               }
@@ -187,8 +235,8 @@ public:
             
             dam_err_ =  damaris_end_iteration();
             if (dam_err_ != DAMARIS_OK) {
-                std::cerr << "ERROR rank =" << rank_ << " : damariswriter::writeOutput() : damaris_end_iteration()" 
-                << ", Damaris error = " <<  damaris_error_string(dam_err_) << std::endl ;
+                OpmLog::error(fmt::format("ERORR: damariswriter::writeOutput()       : ( rank:{}) damaris_end_iteration(), Damaris Error: {}  ",  rank_, damaris_error_string(dam_err_) ));
+                    
             }
             
          } // end of ! isSubstep
@@ -220,6 +268,7 @@ private:
         if ( nranks_ > 1 ){
             const std::vector<int>& local_to_global =  this->collectToIORank_.localIdxToGlobalIdxMapping(); 
             dam_err_ = damaris_write("GLOBAL_CELL_INDEX", local_to_global.data());
+            
         } else {
             // thia branch is needed for when there is only 1 simulation rank
             std::vector<int> local_to_global_filled ;
@@ -232,8 +281,9 @@ private:
         }
         
         if (dam_err_ != DAMARIS_OK) {
-            std::cerr << "ERROR rank =" << rank_ << " : eclwrite::writeOutput() : damaris_write(\"GLOBAL_CELL_INDEX\", local_to_global.data())" 
-                  << ", Damaris error = " <<  damaris_error_string(dam_err_) << std::endl ;
+            if (dam_err_ != DAMARIS_OK) {
+                OpmLog::error(fmt::format("ERORR: damariswriter::SetGlobalIndexForDamaris()       : ( rank:{}) damaris_write(\"GLOBAL_CELL_INDEX\", ...), Damaris Error: {}  ",  rank_, damaris_error_string(dam_err_) ));
+            }
         }
         
         // std::cout << " Calling: damaris_write(\"MPI_RANK\", "  <<  this->numElements_ << "...)" << std::endl ;
@@ -243,7 +293,7 @@ private:
            std::cerr << "ERROR rank =" << rank_ << " : damariswriter::writeOutput() : damaris_write(\"MPI_RANK\""
            << "...), failed. Damaris error = " <<  damaris_error_string(dam_err_) << std::endl ;
         }*/
-               
+        
     }
     
     
@@ -380,8 +430,7 @@ private:
         }
       
         // Currently by default we assume static grid (unchanging through the simulation)
-        // Set damarisUpdate_ to true if we want to update the geometry to sent to Damaris 
-        this->damarisUpdate_ = false; 
+        // Set damarisUpdate_ to true if we want to update the geometry to sent to Damaris  
         */
     }
 
@@ -447,8 +496,7 @@ private:
 
     Simulator& simulator_;
     std::unique_ptr<EclOutputBlackOilModule<TypeTag>> damarisOutputModule_;
-    // std::vector<unsigned long long> elements_rank_offsets_ ;
-
+    std::vector<unsigned long long> elements_rank_offsets_ ;
     bool damarisUpdate_ = false;  ///< Whenever this is true writeOutput() will set up Damaris mesh information and offsets of model fields
 };
 } // namespace Opm

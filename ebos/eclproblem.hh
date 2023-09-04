@@ -298,8 +298,9 @@ public:
         // create the ECL writer
         eclWriter_ = std::make_unique<EclWriterType>(simulator);
 #if HAVE_DAMARIS
-        // create Damaris writer
-        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator);
+        // create Damaris writer c
+        // damarisWriter_ = std::make_unique<DamarisWriterType>(simulator, eclWriter_->returnLocalToGlobal() );
+        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator );
         enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
 #endif
         enableDriftCompensation_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableDriftCompensation);
