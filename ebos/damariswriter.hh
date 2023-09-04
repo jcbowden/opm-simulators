@@ -30,8 +30,8 @@
 
 #include <ebos/collecttoiorank.hh>
 #include <ebos/eclbasevanguard.hh>
-// #include <ebos/eclgenericwriter.hh>
-#include <ebos/damarisgenericwriter.hh>
+#include <ebos/eclgenericwriter.hh>
+// #include <ebos/damarisgenericwriter.hh>
 #include <ebos/ecloutputblackoilmodule.hh>
 
 #include <opm/simulators/utils/DeferredLoggingErrorHelpers.hpp>
