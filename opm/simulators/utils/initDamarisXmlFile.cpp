@@ -54,14 +54,12 @@ std::string initDamarisXmlFile()
     <layout   name="zonal_layout_usmesh_integer"  type="int"   dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
     <variable name="GLOBAL_CELL_INDEX"            layout="zonal_layout_usmesh_integer"     type="scalar"  visualizable="false"  time-varying="false"  centering="zonal" />
     <layout   name="zonal_layout_usmesh"          type="double" dimensions="n_elements_local"   global="n_elements_total"   comment="For the field data e.g. Pressure"  />
-    <variable name="PRESSURE"       layout="zonal_layout_usmesh"     type="scalar"  visualizable="true"  mesh="unstructured_mesh"   unit="Bar"   centering="zonal" select-file="GLOBAL_CELL_INDEX" store="_MYSTORE_OR_EMPTY_REGEX_"  script="PythonScript" />
     _MORE_VARIABLES_REGEX_
     
     <variable name="MPI_RANK"  layout="zonal_layout_usmesh_integer"   type="scalar"  visualizable="true" mesh="unstructured_mesh" unit="rank"  centering="zonal"  select-file="GLOBAL_CELL_INDEX"  store="#" time-varying="false"  script="#" comment="The cells MPI rank"/>
     
     <variable name="KRNSW_GO"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
     <variable name="KRNSW_OW"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
-    <variable name="KRNSW_GO"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
     <variable name="PCSWM_GO"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
     <variable name="PCSWM_OW"  layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit=""  centering="zonal"     time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
     <variable name="PPCW"      layout="zonal_layout_usmesh"  type="scalar"  visualizable="true" mesh="unstructured_mesh"  unit="Bar"  centering="zonal"  time-varying="true" select-file="GLOBAL_CELL_INDEX"  store="_MYSTORE_OR_EMPTY_REGEX_"   script="PythonScript" />
@@ -164,7 +162,7 @@ std::string initDamarisXmlFile()
 </scripts>
 
 <paraview update-frequency="1" write-vtk="0" write-vtk-binary="false">
-        <script>damaris_slice_xy_csv_opmflow.py</script>
+        <script></script>
 </paraview>
 
 <actions>

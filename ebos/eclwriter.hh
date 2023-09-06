@@ -130,11 +130,7 @@ public:
 
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableEsmry,
                              "Write ESMRY file for fast loading of summary data.");
-                             
-#ifdef HAVE_DAMARIS
-   //     EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutputCollective,
-    //                         "Write output via Damaris using parallel HDF5 to get single file per timestep instead of one per Damaris core.");
-#endif                             
+                                                        
     }
 
     // The Simulator object should preferably have been const - the
@@ -157,10 +153,6 @@ public:
                    EWOMS_GET_PARAM(TypeTag, bool, EnableEsmry))
         , simulator_(simulator)
     {
-#ifdef HAVE_DAMARIS
-        this->damarisUpdate_ = enableDamarisOutput_();
-#endif
-
         this->eclOutputModule_ = std::make_unique<EclOutputBlackOilModule<TypeTag>>
             (simulator, this->collectToIORank_);
     }
@@ -502,11 +494,6 @@ private:
     static bool enableEclOutput_()
     { return EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput); }
 
-#ifdef HAVE_DAMARIS
-    static bool enableDamarisOutput_()
-    { return EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput); }
-#endif
-
     const EclipseState& eclState() const
     { return simulator_.vanguard().eclState(); }
 
@@ -645,10 +632,6 @@ private:
     Simulator& simulator_;
     std::unique_ptr<EclOutputBlackOilModule<TypeTag> > eclOutputModule_;
     Scalar restartTimeStepSize_;
-
-#ifdef HAVE_DAMARIS
-    bool damarisUpdate_ = false;  ///< Whenever this is true writeOutput() will set up Damaris mesh information and offsets of model fields
-#endif
 };
 
 } // namespace Opm

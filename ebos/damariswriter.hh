@@ -164,8 +164,7 @@ public:
         
         this->elements_rank_offsets_.resize(nranks_) ;
 
-        this->damarisOutputModule_ = std::make_unique<EclOutputBlackOilModule<TypeTag>>(simulator, this->wbp_index_list_, this->collectToIORank_);
-        this->wbp_index_list_.clear();
+        this->damarisOutputModule_ = std::make_unique<EclOutputBlackOilModule<TypeTag>>(simulator, this->collectToIORank_);
     }
 
     ~DamarisWriter()
@@ -350,11 +349,11 @@ private:
     {
         const auto& gridView = simulator_.gridView();
         //  const auto& interior_elements = elements(gridView, Dune::Partitions::interior);
-        // Get the size of the unique vector elements (excludes the shared 'ghost' elements)
+        //  Get the size of the unique vector elements (excludes the shared 'ghost' elements)
         //  const int numElements = std::distance(interior_elements.begin(), interior_elements.end());
-        // Sets the damaris parameter values which then defines sizes of the arrays per-rank and globally.
-        // Also sets the offsets to where a ranks array data sits within the global array. 
-        // This is usefull for HDF5 output and for defining distributed arrays in Dask.
+        //  Sets the damaris parameter values which then defines sizes of the arrays per-rank and globally.
+        //  Also sets the offsets to where a ranks array data sits within the global array. 
+        //  This is usefull for HDF5 output and for defining distributed arrays in Dask.
         //  Opm::DamarisOutput::setupDamarisWritingPars(simulator_.vanguard().grid().comm(), numElements);
         
         Opm::GridDataOutput::SimMeshDataAccessor geomData(gridView, Dune::Partitions::interior) ; // N.B. we cannot reuse the same object using a different partition.
@@ -370,16 +369,16 @@ private:
             } 
             damarisMeshVars.set_hasPolyhedralCells(hasPolyCells) ;
            
-            /* This is our template XML model for x,y,z coordinates
-              <parameter name="n_coords_local"     type="int" value="1" />
-              <parameter name="n_coords_global"    type="int" value="1" comment="only needed if we need to write to HDF5 in Collective mode/>
-              <layout    name="n_coords_layout"    type="double" dimensions="n_coords_local"   comment="For the individual x, y and z coordinates of the mesh vertices, these values are referenced in the topologies/topo/subelements/connectivity_pg data"  />
-              <group name="coordset/coords/values"> 
-                  <variable name="x"    layout="n_coords_layout"  type="scalar"  visualizable="false"  unit="m"   script="PythonConduitTest" time-varying="false" />
-                  <variable name="y"    layout="n_coords_layout"  type="scalar"  visualizable="false"  unit="m"   script="PythonConduitTest" time-varying="false" />
-                  <variable name="z"    layout="n_coords_layout"  type="scalar"  visualizable="false"  unit="m"   script="PythonConduitTest" time-varying="false" />
-              </group>
-            */
+            // This is our template XML model for x,y,z coordinates
+            // <parameter name="n_coords_local"     type="int" value="1" />
+            // <parameter name="n_coords_global"    type="int" value="1" comment="only needed if we need to write to HDF5 in Collective mode/>
+            // <layout    name="n_coords_layout"    type="double" dimensions="n_coords_local"   comment="For the individual x, y and z coordinates of the mesh vertices, these values are referenced in the topologies/topo/subelements/connectivity_pg data"  />
+            // <group name="coordset/coords/values"> 
+            //     <variable name="x"    layout="n_coords_layout"  type="scalar"  visualizable="false"  unit="m"   script="PythonConduitTest" time-varying="false" />
+            //     <variable name="y"    layout="n_coords_layout"  type="scalar"  visualizable="false"  unit="m"   script="PythonConduitTest" time-varying="false" />
+            //     <variable name="z"    layout="n_coords_layout"  type="scalar"  visualizable="false"  unit="m"   script="PythonConduitTest" time-varying="false" />
+            // </group>
+            // 
             int xyz_coord_dims = 1 ;
             std::vector<std::string> param_names = {"n_coords_local"} ;  // a vector of strings as a variables layout may be defined by multiple parameters 
             std::string variable_x = "coordset/coords/values/x" ;  // This string must match the group/variable name of the Damaris XML file 
@@ -418,18 +417,18 @@ private:
             // damarisMeshVars.CommitAll_VERTEX_SEPARATE_X_Y_Z_shmem() ;
             // damarisMeshVars.ClearAll_VERTEX_SEPARATE_X_Y_Z_shmem() ;
             
-            /* This is our template XML model for connectivity 
-              <parameter name="n_connectivity_ph"        type="int"  value="1" />
-              <layout    name="n_connections_layout_ph"  type="int"  dimensions="n_connectivity_ph"   comment="Layout for connectivities "  />
-              <parameter name="n_offsets_types_ph"       type="int"  value="1" />
-              <layout    name="n_offsets_layout_ph"      type="int"  dimensions="n_offsets_types_ph"  comment="Layout for the offsets_ph"  />
-              <layout    name="n_types_layout_ph"        type="char" dimensions="n_offsets_types_ph"  comment="Layout for the types_ph "  />
-              <group name="topologies/topo/elements">
-                  <variable name="connectivity" layout="n_connections_layout_ph"  type="scalar"  visualizable="false"  unit=""   script="PythonConduitTest" time-varying="false" />
-                  <variable name="offsets"      layout="n_offsets_layout_ph"    type="scalar"  visualizable="false"  unit=""   script="PythonConduitTest" time-varying="false" />
-                  <variable name="types"        layout="n_types_layout_ph"    type="scalar"  visualizable="false"  unit=""   script="PythonConduitTest" time-varying="false" />
-              </group>
-            */
+            //  This is our template XML model for connectivity 
+            // <parameter name="n_connectivity_ph"        type="int"  value="1" />
+            // <layout    name="n_connections_layout_ph"  type="int"  dimensions="n_connectivity_ph"   comment="Layout for connectivities "  />
+            // <parameter name="n_offsets_types_ph"       type="int"  value="1" />
+            // <layout    name="n_offsets_layout_ph"      type="int"  dimensions="n_offsets_types_ph"  comment="Layout for the offsets_ph"  />
+            // <layout    name="n_types_layout_ph"        type="char" dimensions="n_offsets_types_ph"  comment="Layout for the types_ph "  />
+            // <group name="topologies/topo/elements">
+            //     <variable name="connectivity" layout="n_connections_layout_ph"  type="scalar"  visualizable="false"  unit=""   script="PythonConduitTest" time-varying="false" />
+            //     <variable name="offsets"      layout="n_offsets_layout_ph"    type="scalar"  visualizable="false"  unit=""   script="PythonConduitTest" time-varying="false" />
+            //     <variable name="types"        layout="n_types_layout_ph"    type="scalar"  visualizable="false"  unit=""   script="PythonConduitTest" time-varying="false" />
+            // </group>
+            // 
            
             param_names[0] = "n_connectivity_ph" ; 
             std::string varname = std::string("topologies/topo/elements/connectivity") ;  // This string must match the group/variable name of the Damaris XML file 
