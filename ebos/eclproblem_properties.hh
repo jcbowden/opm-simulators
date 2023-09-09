@@ -35,6 +35,7 @@
 #include <ebos/eclnewtonmethod.hh>
 #include <ebos/ecloutputblackoilmodule.hh>
 #include <ebos/eclwriter.hh>
+#include <ebos/damariswriter.hh>
 #include <ebos/FIBlackOilModel.hpp>
 #include <ebos/vtkecltracermodule.hh>
 
@@ -383,7 +384,7 @@ template<class TypeTag>
 struct EnableEclOutput<TypeTag,TTag::EclBaseProblem> {
     static constexpr bool value = true;
 };
-#ifdef HAVE_DAMARIS
+ #ifdef HAVE_DAMARIS
 //! Enable the Damaris output by default
 template<class TypeTag>
 struct EnableDamarisOutput<TypeTag, TTag::EclBaseProblem> {

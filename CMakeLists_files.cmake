@@ -414,6 +414,7 @@ list (APPEND PUBLIC_HEADER_FILES
   ebos/ecltransmissibility.hh
   ebos/ecltransmissibility_impl.hh
   ebos/eclwriter.hh
+  ebos/damariswriter.hh
   ebos/femcpgridcompat.hh
   ebos/hdf5serializer.hh
   ebos/vtkecltracermodule.hh

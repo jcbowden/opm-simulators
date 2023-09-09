@@ -1,6 +1,8 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
+  Copyright 2023 INRIA
+  
   This file is part of the Open Porous Media project (OPM).
 
   OPM is free software: you can redistribute it and/or modify
@@ -44,6 +46,7 @@
 #include <ebos/eclthresholdpressure.hh>
 #include <ebos/ecltransmissibility.hh>
 #include <ebos/eclwriter.hh>
+#include <ebos/damariswriter.hh>
 #include <ebos/ecltracermodel.hh>
 #include <ebos/FIBlackOilModel.hpp>
 #include <ebos/vtkecltracermodule.hh>
@@ -182,6 +185,9 @@ class EclProblem : public GetPropType<TypeTag, Properties::BaseProblem>
     using DimMatrix = Dune::FieldMatrix<Scalar, dimWorld, dimWorld>;
 
     using EclWriterType = EclWriter<TypeTag>;
+#if HAVE_DAMARIS
+    using DamarisWriterType = DamarisWriter<TypeTag>;
+#endif
 
     using TracerModel = EclTracerModel<TypeTag>;
     using DirectionalMobilityPtr = Opm::Utility::CopyablePtr<DirectionalMobility<TypeTag, Evaluation>>;
@@ -202,6 +208,10 @@ public:
     {
         ParentType::registerParameters();
         EclWriterType::registerParameters();
+#if HAVE_DAMARIS
+        DamarisWriterType::registerParameters();
+#endif
+
         VtkEclTracerModule<TypeTag>::registerParameters();
 
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableWriteAllSolutions,
@@ -210,7 +220,7 @@ public:
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableEclOutput,
                              "Write binary output which is compatible with the commercial "
                              "Eclipse simulator");
-#ifdef HAVE_DAMARIS
+#if HAVE_DAMARIS
         EWOMS_REGISTER_PARAM(TypeTag, bool, EnableDamarisOutput,
                              "Write a specific variable using Damaris in a separate core");
 #endif
@@ -291,11 +301,15 @@ public:
 
         // create the ECL writer
         eclWriter_ = std::make_unique<EclWriterType>(simulator);
-
+#if HAVE_DAMARIS
+        // create Damaris writer
+        damarisWriter_ = std::make_unique<DamarisWriterType>(simulator);
+        enableDamarisOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableDamarisOutput) ;
+#endif
         enableDriftCompensation_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableDriftCompensation);
 
-        enableEclOutput_ = EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput);
-
+        enableEclOutput_     = EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput);
+        
         if constexpr (enableExperiments)
             enableAquifers_ = EWOMS_GET_PARAM(TypeTag, bool, EclEnableAquifers);
         else
@@ -724,9 +738,20 @@ public:
         ParentType::writeOutput(verbose);
 
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
-        if (enableEclOutput_){
-            eclWriter_->writeOutput(isSubStep);
+        
+        data::Solution localCellData = {};
+#if HAVE_DAMARIS
+        // N.B. the Damaris output has to be done before the ECL output as the ECL one 
+        // does all kinds of std::move() relocation of data
+        if (enableDamarisOutput_) {
+            damarisWriter_->writeOutput(localCellData, isSubStep) ;
         }
+#endif 
+        if (enableEclOutput_){
+            eclWriter_->writeOutput(localCellData, isSubStep);
+        }
+        
+
     }
 
     void finalizeOutput() {
@@ -2529,6 +2554,11 @@ private:
 
     bool enableEclOutput_;
     std::unique_ptr<EclWriterType> eclWriter_;
+    
+#if HAVE_DAMARIS
+    bool enableDamarisOutput_ = false ;
+    std::unique_ptr<DamarisWriterType> damarisWriter_;
+#endif 
 
     PffGridVector<GridView, Stencil, PffDofData_, DofMapper> pffDofData_;
     TracerModel tracerModel_;
